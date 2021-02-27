@@ -1,0 +1,128 @@
+#!/bin/sh
+
+PKG=$2
+
+ROOT="$(dirname "$PWD")"
+
+SRCDIR=$ROOT/src
+
+PKGS=$SRCDIR/pkgs
+
+PKGDIR=$SRCDIR/pkg/$PKG
+
+BUILDDIR=$SRCDIR/build
+
+PKGFILE=$PKGDIR/build
+
+PATCHES=$PKGDIR/patch
+
+#
+
+JOBS=$(nproc)
+
+pkg_open() {
+  if [[ ! -d $PKGDIR ]]; then
+    echo "package $PKG not found"
+    exit 1
+  fi
+  if [[ ! -e $PKGFILE ]]; then
+    echo "missing build file in $PKG package"
+    exit 1
+  fi
+  . $PKGFILE
+}
+
+pkg_build() {
+  if [[ -z $name ]]; then
+    name=$PKG
+  fi
+
+  if [[ -z $ver ]]; then
+    FULLNAME=$name
+  else
+    FULLNAME=$name-$ver
+  fi
+
+  WORK=$BUILDDIR/$FULLNAME
+  FILENAME="`basename $src`"
+
+  if [[ $src == *"github.com"* ]] && [[ $FILENAME != *"."* ]]; then
+    FULLNAME=$name
+    WORK=$BUILDDIR/$FULLNAME
+    git clone $src $WORK
+  else
+    FILE=$name-$ver.${FILENAME##*.}
+    cd $SRCDIR/dl
+    wget --no-check-certificate $src -O $FILE
+    case $FILE in
+    *.zip) unzip $FILE -d $BUILDDIR ; ;;
+    *.tgz|*.gz) tar xzvf $FILE -C $BUILDDIR ; ;;
+    *.tbz2|*.bz2) tar xjvf $FILE -C $BUILDDIR ; ;;
+    *.xz) xz -d $BUILDDIR ; FILE2=`echo $FILE | sed -e s,.xz,,`; tar xvf $FILE2 -C $BUILDDIR ; ;;
+    esac
+  fi
+  if [[ ! -d $WORK ]]; then
+    echo "failed to download $name source"
+    exit 1
+  fi
+  cd $WORK
+  echo "started installing $FULLNAME"
+  if [[ -d $PATCHES ]]; then
+    for patch in $PATCHES/*; do
+      patch -p1 < $patch
+    done
+  fi
+  build
+  echo "installation finished: $name"
+}
+
+pkg_install() {
+  if [[ -z $PKG ]]; then
+    echo "provide a package name"
+    exit 1
+  fi
+  if pkg_exists; then
+    echo "package is already installed"
+    exit 1
+  fi
+  pkg_open
+  if [[ ! -z $deps ]]; then
+    if [[ -z $src ]]; then
+      echo "installing package group: $PKG"
+    fi
+    for dep in "${deps[@]}"; do
+      sh $ROOT/bin/nono -i $dep
+    done
+  fi
+  echo $PKG >> $PKGS
+  if [[ ! -z $src ]]; then
+    pkg_build
+  fi
+}
+
+pkg_exists() {
+  while read line; do
+    if [[ $line == $PKG ]]; then
+      return 0
+    fi
+  done < $PKGS
+  return 1
+}
+
+pkg_remove() {
+  if [[ -z $PKG ]]; then
+    echo "provide a package name"
+    exit 1
+  fi
+}
+
+help() {
+  echo "nono -i package: install"
+  echo "nono -r package: remove"
+}
+
+case $1 in
+-i) pkg_install ; ;;
+-r) pkg_remove ; ;;
+*) help ; ;;
+esac

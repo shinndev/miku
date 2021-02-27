@@ -1,0 +1,10 @@
+name=htop
+ver=3.0.0beta5
+src=https://github.com/hishamhm/htop/archive/$ver.zip
+
+pro="hi"
+
+build() {
+  echo $JOBS
+  echo $pro
+}

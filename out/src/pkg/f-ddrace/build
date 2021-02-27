@@ -1,0 +1,10 @@
+name=F-DDrace
+deps=(cmake)
+src=https://github.com/fokkonaut/F-DDrace
+
+build() {
+  mkdir build
+  cd build
+  cmake ..
+  make
+}
