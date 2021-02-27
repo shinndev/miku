@@ -1,7 +1,0 @@
-name=Linux Kernel
-ver=5.5.2
-src=https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$VERSION.tar.xz
-
-build() {
-  
-}
