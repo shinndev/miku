@@ -1,0 +1,3 @@
+#!/bin/sh
+
+chroot out /bin/ash

@@ -1,2 +1,2 @@
 name="Miku Linux"
-deps=(htop)
+deps=(busybox musl)

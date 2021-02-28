@@ -1,0 +1,19 @@
+name=gcc
+ver=10.2.0
+type=tar.xz
+src=https://ftp.gnu.org/gnu/gcc/gcc-$ver/gcc-$ver.tar.xz
+
+build() {
+  export GCCOPTS="--with-arch=x86_64"
+  mkdir build
+  cd build
+  ../configure $GCCOPTS \
+    --prefix=/usr \
+    --libdir=/usr/lib \
+    --libexecdir=/usr/lib \
+    --enable-threads=posix \
+    --enable-languages=c,c++,lto \
+
+    make -j$JOBS
+    make -j$JOBS DESTDIR=$ROOT install
+}
