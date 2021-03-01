@@ -1,0 +1,15 @@
+name=bash
+desc="shell"
+ver=5.1
+type=zip
+src=https://github.com/bminor/bash/archive/bash-$ver.$type
+
+build() {
+  ./configure \
+    --prefix=/
+    #--without-bash-malloc
+    --disable-nls
+  make builtins/builtext.h
+  make -j$JOBS READLINE_LIB=lib/readline/libreadline.a
+  make DESTIR=$ROOT install
+}

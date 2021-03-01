@@ -1,4 +1,5 @@
 name=F-DDrace
+desc="a Teeworlds server mod by fokkonaut"
 deps=(cmake)
 src=https://github.com/fokkonaut/F-DDrace
 
@@ -6,5 +7,5 @@ build() {
   mkdir build
   cd build
   cmake ..
-  make
+  make -j$JOBS
 }

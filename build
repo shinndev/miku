@@ -14,7 +14,8 @@ fi
 
 mkdir out
 cd out
-mkdir -p bin boot dev etc home lib mnt proc root share srv src sys tmp var
+
+mkdir -p bin boot dev etc home lib mnt proc opt root share srv src sys tmp var
 mkdir -p src/build src/dl src/pkg
 
 touch src/pkgs
@@ -24,6 +25,7 @@ ln -sfn bin sbin
 
 chmod 1777 tmp
 chmod 700 root
+chmod 0600 etc/shadow
 
 cp -r ../src/bin/* bin
 cp -r ../src/boot/* boot

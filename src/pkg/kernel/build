@@ -1,7 +1,12 @@
 name="Linux Kernel"
-ver=5.5.2
-src=https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$VERSION.tar.xz
+ver=5.0.2
+type=tar.xz
+src=https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$ver.$type
 
 build() {
-  
+  make mrproper defconfig bzImage -j$JOBS
+  if [[ ! -e arch/x86/boot/bzImage ]]; then
+    return 1
+  fi
+  cp arch/x86/boot/bzImage $ROOT/boot/vmlinuz
 }

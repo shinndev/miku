@@ -1,17 +1,22 @@
 #!/bin/bash
 
+# todo: cache
+# todo: dont always run nono on every dep
+# todo multithread
+# todo: remove type setting, auto detect it
+
 PKG=$2
 
 ROOT="$(dirname "$PWD")"
 
-SRCDIR=$ROOT/src
+SRC=$ROOT/src
 
-PKGS=$SRCDIR/pkgs
+PKGS=$SRC/pkgs
 
-PKGDIR=$SRCDIR/pkg/$PKG
+PKGDIR=$SRC/pkg/$PKG
 
-BUILDDIR=$SRCDIR/build
-DLDIR=$SRCDIR/dl
+BUILD=$SRC/build
+DL=$SRC/dl
 
 PKGFILE=$PKGDIR/build
 
@@ -24,115 +29,204 @@ JOBS=$(nproc)
 ########################
 
 pkg_open() {
-  if [[ ! -d $PKGDIR ]]; then
-    echo "package $PKG not found"
-    exit 1
-  fi
   if [[ ! -e $PKGFILE ]]; then
     echo "missing build file in $PKG package"
     exit 1
   fi
+
   . $PKGFILE
+
   if [[ -z $name ]]; then
     name=$PKG
   fi
-  FULLNAME=$name-$ver
+
+  GIT=no
+  if [[ $src == *"git"* ]] && [[ "`basename $src`" != *"."* ]]; then
+    GIT=yes
+  fi
+
+  if ! fn_exists build; then
+    if [[ ! -z $deps ]]; then
+      PKGTYPE=group
+    else
+      echo "empty package. $PKG"
+      exit 1
+    fi
+  else
+    if [[ $GIT = yes ]]; then
+      PKGTYPE=git
+    elif [[ ! -z $src ]]; then
+      if [[ -z $type ]]; then
+        echo "missing type in package $PKG"
+        exit 1
+      fi
+
+      PKGTYPE=normal
+    else
+      PKGTYPE=script
+    fi
+  fi
+
+  if [[ -z $ver ]]; then
+    FULLNAME=$name
+  else
+    FULLNAME=$name-$ver
+  fi
+
+  if [[ $PKGTYPE = normal ]]; then
+    if [[ -z $ver ]]; then
+      FILENAME=$PKG.$type
+      WORK=$BUILD/$PKG
+    else
+      FILENAME=$PKG-$ver.$type
+      WORK=$BUILD/$PKG-$ver
+    fi
+
+    FILE=$DL/$FILENAME
+  elif [[ $PKGTYPE = git ]]; then
+    WORK=$BUILD/$FULLNAME
+    type=
+  elif [[ $PKGTYPE = script ]]; then
+    type=
+  elif [[ $PKGTYPE = group ]]; then
+    ver=
+  fi
 }
 
 pkg_extract() {
+  cd $DL
+
+  if [[ $type != "zip" ]]; then
+    mkdir $WORK
+  fi
+
   case $FILENAME in
-  *.zip) unzip $FILENAME -d $BUILDDIR ; ;;
-  *.tgz|*.gz) tar xzvf $FILENAME -C $BUILDDIR ; ;;
-  *.tbz2|*.bz2) tar xjvf $FILENAME -C $BUILDDIR ; ;;
-  *.xz) tar xf $FILENAME -C $BUILDDIR ; ;;
+  *.zip) unzip $FILENAME -d $WORK ; ;;
+  *.tgz|*.gz) tar xzvf $FILENAME -C $WORK --strip-components 1 ; ;;
+  *.tbz2|*.bz2) tar xjvf $FILENAME -C $WORK --strip-components 1 ; ;;
+  *.xz) tar xf $FILENAME -C $WORK --strip-components 1 ; ;;
   esac
 }
 
 pkg_download() {
-  FILENAME=$FULLNAME.$type
+  if [[ $GIT = yes ]]; then
+    cd $BUILD
 
-  if [[ $src == *"git"* ]] && [[ "`basename $src`" != *"."* ]]; then
-    WORK=$BUILDDIR/$name
-
-    cd $BUILDDIR
-
-    if [[ -d $WORK ]]; then
-      git pull
-    else
-      git clone $src $WORK
-    fi
-
-    return
-  elif [[ -z $type ]]; then
-    echo "missing package type in $PKG package"
-    exit 1
-  fi
-
-  WORK=$BUILDDIR/$FULLNAME
-  if [[ -d $WORK ]]; then
-    return
-  fi
-
-  cd $DLDIR
-
-  FILE=$DLDIR/$FILENAME
-  if [[ ! -e $FILE ]]; then
-    wget --no-check-certificate $src -O $FILENAME
-  fi
-
-  if [[ -e $FILE ]]; then
-    pkg_extract
+    git clone $src $FULLNAME
   else
-    echo "failed to download, retrying"
-    pkg_download
+    cd $DL
+
+    wget --no-check-certificate $src -O $FILENAME
   fi
 }
 
 pkg_build() {
   cd $WORK
+
   if [[ -d $PATCHES ]]; then
     for patch in $PATCHES/*; do
       patch -p1 < $patch
-
     done
   fi
-  build
+
+  if ! build; then
+    echo "build error on package $PKG"
+    exit 1
+  fi
 }
 
 pkg_install() {
   pkg_open
-  if pkg_exists $PKG; then
-    if [[ -z $src ]]; then
+
+  if [[ $PKGTYPE = normal ]] || [[ $PKGTYPE = git ]]; then
+    for dep in "${deps[@]}"; do
+      if ! pkg_exists $dep; then
+        sh $ROOT/bin/nono -i $dep
+      fi
+    done
+  fi
+
+  if [[ $PKGTYPE = normal ]]; then
+    if pkg_exists $PKG; then
+      echo "package $PKG is already installed"
+      return
+    fi
+
+    echo "installing package $FULLNAME"
+
+    if [[ ! -d $WORK ]] && [[ ! -e $FILE ]]; then
+      pkg_download
+    fi
+
+    if [[ ! -e $FILE ]]; then
+      echo "failed to download pkg: $PKG"
+      return
+    elif [[ ! -d $WORK ]]; then
+      pkg_extract
+    fi
+
+    if [[ ! -d $WORK ]]; then
+      echo "failed to extract package: $PKG"
+      return
+    fi
+
+    echo "building $name"
+    pkg_build
+    return
+  elif [[ $PKGTYPE = git ]]; then
+    if [[ -d $WORK ]]; then
+      if pkg_exists $PKG; then
+        git pull
+        pkg_build
+      fi
+    else
+      pkg_download
+    fi
+
+    if [[ ! -d $WORK ]]; then
+      echo "failed to clone $FULLNAME"
+    else
+      pkg_build
+    fi
+
+    return
+  elif [[ $PKGTYPE = script ]]; then
+    echo "running script $FULLNAME"
+    if build; then
+      echo "script run successfully: $name"
+    else
+      echo "$name script resulted with error"
+    fi
+    return
+  else
+    if pkg_exists $PKG; then
+      echo "checking package group '$PKG' for new entries..."
+
+      found=no
       for dep in "${deps[@]}"; do
         if ! pkg_exists $dep; then
+          found=yes
+          echo "new entry in $PKG group: $dep"
           sh $ROOT/bin/nono -i $dep
         fi
       done
+
+      if [[ $found = no ]]; then
+        echo "nothing to do"
+      fi
       return
     else
-      echo "$PKG is already installed"
-      exit 1
+      echo "installing package group: $FULLNAME"
+      for dep in "${deps[@]}"; do
+        sh $ROOT/bin/nono -i $dep
+      done
     fi
   fi
-  if [[ -z $src ]]; then
-    echo "installing package group: $PKG"
-  else
-    echo "installing package $FULLNAME"
-  fi
-  for dep in "${deps[@]}"; do
-    sh $ROOT/bin/nono -i $dep
-  done
-  if [[ -z $src ]]; then
-    echo "package group installed: $PKG"
-  else
-    pkg_download
-    pkg_build
-  fi
+
   echo $PKG >> $PKGS
-  echo "installation finished: $FULLNAME"
 }
 
-pkg_exists() {
+pkg_exists() { # todo: cache
   while read line; do
     if [[ $line == $1 ]]; then
       return 0
@@ -144,15 +238,21 @@ pkg_exists() {
 pkg_remove() {
   while read line; do
     if [[ $line == $PKG ]]; then
-      # set $line "" from $PKGS
+      # todo
       return
     fi
   done < $PKGS
 }
 
+pkg_info() {
+  pkg_open
+  echo $desc
+}
+
 help() {
   echo "nono -i package: install"
   echo "nono -r package: remove"
+  echo "nono -I package: info"
 }
 
 if [[ -z $PKG ]]; then
@@ -160,8 +260,21 @@ if [[ -z $PKG ]]; then
   exit 1
 fi
 
+if [[ ! -d $PKGDIR ]]; then
+  echo "package not found: $PKG"
+  exit 1
+fi
+
+fn_exists() {
+  if type $1 2>/dev/null | grep -q 'function'; then
+    return 0
+  fi
+  return 1
+}
+
 case $1 in
 -i) pkg_install ; ;;
 -r) pkg_remove ; ;;
+-I) pkg_info ; ;;
 *) help ; ;;
 esac

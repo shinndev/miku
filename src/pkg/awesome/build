@@ -1,5 +1,13 @@
-name=AwesomeWM
+name=awesomeWM
+desc="best window manager"
+src=https://github.com/awesomeWM/awesome
 
 build() {
+  lgicheck="build-utils/lgi_check.sh"
+  rm $lgicheck
+  ln -s /bin/true $lgicheck
 
+  fakebin=miku-bin
+  mkdir $fakebin
+  ln -s /bin/true $fakebin/convert
 }

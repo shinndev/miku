@@ -1,1 +1,27 @@
 #!/bin/sh
+
+if [[ ! -d out ]]; then
+  echo "out/ directory doesn't exist, please use ./build"
+  exit 1
+fi
+
+EXCLUDE="src/dl src/build"
+
+ISOROOT=$(mktemp -d)
+cp -r out/boot/* $ISOROOT
+
+FAKEROOT=$(mktemp -d)
+mkdir $FAKEROOT/boot $FAKEROOT/proc $FAKEROOT/sys $FAKEROOT/dev $FAKEROOT/tmp $FAKEROOT/mnt
+
+mksquashfs out/bin out/etc out/include out/lib out/opt out/root out/sbin out/share out/src out/srv out/usr out/var $FAKEROOT/* $ISOROOT/rootfs.img -e $EXCLUDE
+
+xorriso \
+  -as mkisofs \
+  -o mikulinux.iso \
+  -b isolinux.bin \
+  -isohybrid-mbr $ISOROOT/isohdpfx.bin \
+  -c boot.cat \
+  -no-emul-boot \
+  -iso-level 2 \
+  -boot-load-size 4 \
+  -boot-info-table $ISOROOT \

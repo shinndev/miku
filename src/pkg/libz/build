@@ -1,0 +1,14 @@
+name=libz
+desc="replacment for zlib (i think so)"
+ver=1.2.8
+type=tar.gz
+src=https://sortix.org/libz/release/libz-1.2.8.2015.12.26.$type
+
+build() {
+  LDFLAGS="-W1, -rpath-link=$ROOT/lib" \
+    ./configure \
+      --prefix=/
+
+  make V=1 -j$JOBS
+  make DESTDIR=$ROOT install
+}

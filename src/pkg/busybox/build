@@ -6,7 +6,13 @@ src=https://busybox.net/downloads/busybox-$ver.$type
 build() {
   make distclean defconfig
   sed -i "s|.*CONFIG_STATIC.*|CONFIG_STATIC=y|" .config
-  make busybox install -j5
+  make busybox install -j$JOBS
+  if [[ ! -d _install ]]; then
+    return 1
+  fi
   cd _install
   rm -f linuxrc
+  cp -r usr/* $ROOT/usr
+  cp -r bin/* $ROOT/bin
+  cp -r sbin/* $ROOT/sbin
 }

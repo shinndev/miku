@@ -1,0 +1,13 @@
+name=test
+desc="a basic test script"
+
+build() {
+  echo "hello"
+  echo $JOBS
+  echo $ROOT
+  var=5
+  if [[ $var = 5 ]]; then
+    return 0
+  fi
+  return 1
+}

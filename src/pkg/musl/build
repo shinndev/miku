@@ -7,6 +7,6 @@ build() {
   ./configure \
     --prefix=/
     --syslibdir=/lib
-  make -j5
+  make -j$JOBS
   make DESTDIR=$ROOT install
 }
