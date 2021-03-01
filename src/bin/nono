@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# todo: cache
+# todo: cache for installed pkgs
 # todo: dont always run nono on every dep
-# todo multithread
+# todo: multithreading
 # todo: remove type setting, auto detect it
 
 PKG=$2
@@ -20,13 +20,7 @@ DL=$SRC/dl
 
 PKGFILE=$PKGDIR/build
 
-PATCHES=$PKGDIR/patch
-
-### SCRIPT VARIABLES ###
-
 JOBS=$(nproc)
-
-########################
 
 pkg_open() {
   if [[ ! -e $PKGFILE ]]; then
@@ -85,11 +79,11 @@ pkg_open() {
     FILE=$DL/$FILENAME
   elif [[ $PKGTYPE = git ]]; then
     WORK=$BUILD/$FULLNAME
-    type=
+    unset $type
   elif [[ $PKGTYPE = script ]]; then
-    type=
+    unset $type
   elif [[ $PKGTYPE = group ]]; then
-    ver=
+    unset $ver
   fi
 }
 
@@ -122,12 +116,6 @@ pkg_download() {
 
 pkg_build() {
   cd $WORK
-
-  if [[ -d $PATCHES ]]; then
-    for patch in $PATCHES/*; do
-      patch -p1 < $patch
-    done
-  fi
 
   if ! build; then
     echo "build error on package $PKG"
@@ -172,6 +160,7 @@ pkg_install() {
 
     echo "building $name"
     pkg_build
+    echo "package $name installed successfully."
     return
   elif [[ $PKGTYPE = git ]]; then
     if [[ -d $WORK ]]; then
@@ -217,16 +206,30 @@ pkg_install() {
       return
     else
       echo "installing package group: $FULLNAME"
+      ok=yes
       for dep in "${deps[@]}"; do
         sh $ROOT/bin/nono -i $dep
+        if ! pkg_exists $dep; then
+          ok=no
+          echo "$PKG:$dep failed to install"
+        fi
       done
+      if [[ $ok = no ]]; then
+        echo "package group $PKG failed"
+        return
+      fi
     fi
   fi
 
   echo $PKG >> $PKGS
 }
 
-pkg_exists() { # todo: cache
+unsetall() {
+  for i in $(env | awk -F"=" '{print $1}') ; do
+  unset $i ; done
+}
+
+pkg_exists() {
   while read line; do
     if [[ $line == $1 ]]; then
       return 0
@@ -246,7 +249,11 @@ pkg_remove() {
 
 pkg_info() {
   pkg_open
-  echo $desc
+  if [[ ! -z $desc ]]; then
+    echo $desc
+  else
+    echo "no info found"
+  fi
 }
 
 help() {

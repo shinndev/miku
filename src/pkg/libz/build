@@ -1,5 +1,5 @@
 name=libz
-desc="replacment for zlib (i think so)"
+desc="replacment for zlib"
 ver=1.2.8
 type=tar.gz
 src=https://sortix.org/libz/release/libz-1.2.8.2015.12.26.$type

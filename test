@@ -2,5 +2,5 @@
 
 cd out/bin
 #./nono -i base
-./nono -i test
+#./nono -i test
 ./nono -I test
