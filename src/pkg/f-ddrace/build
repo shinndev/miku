@@ -4,8 +4,7 @@ deps=(cmake)
 src=https://github.com/fokkonaut/F-DDrace
 
 build() {
-  mkdir build
-  cd build
-  cmake ..
+  cmake .
   make -j$JOBS
+  make DESTDIR=$ROOT install
 }

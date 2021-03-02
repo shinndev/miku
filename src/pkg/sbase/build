@@ -1,4 +1,3 @@
-name=sbase
 src=git://git.suckless.org/sbase
 
 build() {

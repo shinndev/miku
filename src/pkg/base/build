@@ -1,3 +1,3 @@
 name="Miku Linux"
 desc="this is important"
-deps=(sbase ubase musl ncurses bash)
+deps=(sbase ubase musl sinit ncurses bash)

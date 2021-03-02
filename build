@@ -27,6 +27,7 @@ chmod 700 root
 cp -r ../src/bin/* bin
 cp -r ../src/boot/* boot
 cp -r ../src/etc/* etc
+cp -r ../src/root/* root
 
 cp -r ../src/pkg/* src/pkg
 

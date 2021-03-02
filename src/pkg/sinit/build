@@ -1,0 +1,10 @@
+src=git://git.suckless.org/sinit
+
+build() {
+  make -j$JOBS \
+    PREFIX=$PREFIX \
+    LDFLAGS="-static" \
+
+  make DESTDIR=$ROOT install
+  ln -sf $ROOT/bin/sinit $ROOT/bin/init
+}
