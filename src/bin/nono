@@ -14,7 +14,7 @@ SRC=$ROOT/src
 PKGS=$SRC/pkgs
 
 PORTS=$SRC/pkg
-PKGDIR=$SRC/pkg/$PKG
+PKGDIR=$PORTS/$PKG
 
 BUILD=$SRC/build
 DL=$SRC/dl
@@ -35,7 +35,9 @@ pkg_open() {
     echo "package $PKG does not exist"
     return 1
   fi
+}
 
+pkg_configure() {
   if [[ $SMALL = yes ]]; then
     PKGFILE=$PORTS/$PKG
   else
@@ -152,6 +154,8 @@ pkg_install() {
     return
   fi
 
+  pkg_configure
+
   if [[ $PKGTYPE = normal ]] || [[ $PKGTYPE = git ]]; then
     if pkg_exists $PKG; then
       echo "package $PKG is already installed"
@@ -256,16 +260,23 @@ pkg_exists() {
 }
 
 pkg_remove() {
-  while read line; do
-    if [[ $line == $PKG ]]; then
-      # todo
-      return
-    fi
-  done < $PKGS
+  if ! pkg_open; then
+    return
+  fi
+
+  if ! pkg_exists; then
+    echo "package $PKG is not installed"
+    return
+  fi
+
+  sed -i "/$PKG/d" $PKGS
 }
 
 pkg_info() {
-  pkg_open
+  if ! pkg_open; then
+    return
+  fi
+
   if [[ ! -z $desc ]]; then
     echo $desc
   else
