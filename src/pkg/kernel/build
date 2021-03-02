@@ -4,7 +4,7 @@ type=tar.xz
 src=https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$ver.$type
 
 build() {
-  make mrproper defconfig bzImage -j$JOBS
+  make -j$JOBS
   if [[ ! -e arch/x86/boot/bzImage ]]; then
     return 1
   fi

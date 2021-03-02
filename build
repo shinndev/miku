@@ -14,7 +14,7 @@ mkdir out
 cd out
 
 mkdir -p bin boot dev etc home lib mnt proc opt root share srv src sys tmp var
-mkdir -p src/build src/dl src/pkg
+mkdir -p src/build src/dl src/pkg src/work
 
 touch src/pkgs
 

@@ -6,12 +6,10 @@ src=https://ftp.gnu.org/gnu/gcc/gcc-$ver/gcc-$ver.$type
 build() {
   export GCCOPTS="--with-arch=x86_64"
 
-  mkdir build
-  cd build
-  ../configure $GCCOPTS \
-    --prefix=/usr \
-    --libdir=/usr/lib \
-    --libexecdir=/usr/lib \
+  ./configure $GCCOPTS \
+    --prefix=$PREFIX \
+    --libdir=/lib \
+    --libexecdir=/lib \
     --enable-threads=posix \
     --enable-languages=c,c++,lto \
 

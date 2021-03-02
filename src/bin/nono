@@ -13,24 +13,36 @@ SRC=$ROOT/src
 
 PKGS=$SRC/pkgs
 
+PORTS=$SRC/pkg
 PKGDIR=$SRC/pkg/$PKG
 
 BUILD=$SRC/build
 DL=$SRC/dl
 
-PKGFILE=$PKGDIR/build
-
-FILES=$PKGDIR/files
-PATCHES=$PKGDIR/patches
-STUFF=$PKGDIR/stuff
-
 JOBS=$(nproc)
 PREFIX=""
 
 pkg_open() {
-  if [[ ! -e $PKGFILE ]]; then
-    echo "missing build file in $PKG package"
+  if [[ -e $PORTS/$PKG ]]; then
+    SMALL=yes
+  fi
+
+  if [[ -d $PKGDIR ]]; then
+    SMALL=no
+  fi
+
+  if [[ -z $SMALL ]]; then
+    echo "package $PKG does not exist"
     return 1
+  fi
+
+  if [[ $SMALL = yes ]]; then
+    PKGFILE=$PORTS/$PKG
+  else
+    PKGFILE=$PKGDIR/build
+    FILES=$PKGDIR/files
+    PATCHES=$PKGDIR/patches
+    STUFF=$PKGDIR/stuff
   fi
 
   . $PKGFILE
@@ -86,6 +98,7 @@ pkg_open() {
     WORK=$BUILD/$FULLNAME
     unset $type
   elif [[ $PKGTYPE = script ]]; then
+    WORK=$SRC/work
     unset $type
   elif [[ $PKGTYPE = group ]]; then
     unset $ver
@@ -160,15 +173,13 @@ pkg_install() {
     fi
 
     if [[ ! -e $FILE ]]; then
-      echo "failed to download pkg: $PKG"
-      return
+      die "failed to download pkg: $PKG"
     elif [[ ! -d $WORK ]]; then
       pkg_extract
     fi
 
     if [[ ! -d $WORK ]]; then
-      echo "failed to extract package: $PKG"
-      return
+      die "failed to extract package: $PKG"
     elif [[ -d $FILES ]]; then
       yes | \cp -rf $FILES/* $WORK
     fi
@@ -182,8 +193,7 @@ pkg_install() {
     fi
 
     if [[ ! -d $WORK ]]; then
-      echo "failed to clone $FULLNAME"
-      return
+      die "failed to clone $FULLNAME"
     else
       if [[ -d $FILES ]]; then
         yes | \cp -rf $FILES/* $WORK
@@ -191,16 +201,25 @@ pkg_install() {
       pkg_build
     fi
   elif [[ $PKGTYPE = script ]]; then
-    echo "running script $FULLNAME"
+    echo "executing script $FULLNAME"
+
+    if [[ -d $FILES ]]; then
+      yes | \cp -rf $FILES/* $WORK
+    fi
+
+    cd $WORK
+
     if build; then
       echo "script run successfully: $name"
     else
       echo "$name script resulted with error"
     fi
+
     return
   else
     if pkg_exists $PKG; then
       found=no
+
       for dep in "${deps[@]}"; do
         if ! pkg_exists $dep; then
           found=yes
@@ -214,26 +233,17 @@ pkg_install() {
       return
     else
       echo "installing package group: $FULLNAME"
-      ok=yes
+
       for dep in "${deps[@]}"; do
         sh $ROOT/bin/nono -i $dep
         if ! pkg_exists $dep; then
-          ok=no
+          return
         fi
       done
-      if [[ $ok = no ]]; then
-        echo "package group $PKG failed"
-        return
-      fi
     fi
   fi
 
   echo $PKG >> $PKGS
-}
-
-unsetall() {
-  for i in $(env | awk -F"=" '{print $1}') ; do
-  unset $i ; done
 }
 
 pkg_exists() {
@@ -263,6 +273,11 @@ pkg_info() {
   fi
 }
 
+die() {
+  echo $1
+  exit 1
+}
+
 help() {
   echo "nono -i package: install"
   echo "nono -r package: remove"
@@ -271,11 +286,6 @@ help() {
 
 if [[ -z $PKG ]]; then
   echo "provide a package name"
-  exit 1
-fi
-
-if [[ ! -d $PKGDIR ]]; then
-  echo "package not found: $PKG"
   exit 1
 fi
 
