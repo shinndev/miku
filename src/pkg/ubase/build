@@ -1,5 +1,4 @@
-name=sbase
-src=git://git.suckless.org/sbase
+src=git://git.suckless.org/ubase
 
 build() {
   make -j$JOBS \

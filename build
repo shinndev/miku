@@ -4,9 +4,7 @@ if [ -d out ]; then
   cp src/bin/nono out/bin/nono
   cd out/bin
   rm -rf ../src/pkg
-  #rm ../src/pkgs
   cp -r ../../src/pkg ../src/pkg
-  #touch ../src/pkgs
   ./nono -i base
   cd ../../
   exit 0
@@ -25,7 +23,6 @@ ln -sfn bin sbin
 
 chmod 1777 tmp
 chmod 700 root
-chmod 0600 etc/shadow
 
 cp -r ../src/bin/* bin
 cp -r ../src/boot/* boot

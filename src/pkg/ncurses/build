@@ -1,0 +1,24 @@
+ver=5.9
+type=tar.gz
+src=https://ftp.gnu.org/pub/gnu/ncurses/ncurses-$ver.$type
+
+build() {
+  export CFLAGS="-D_GNU_SOURCE -fPIC"
+
+  ./configure -C \
+    --with-normal \
+    --without-tests \
+    --enable-widec \
+    --with-shared \
+    --enable-sigwinch \
+    --with-fallbacks="linux vt100 xterm xterm256-color" \
+    --prefix=$PREFIX \
+    --includedir=/include \
+    --mandir=/share/man \
+    --disable-nls \
+    --without-dlsym \
+    --without-cxx-binding \
+
+  make -j$JOBS
+  make DESTDIR=$ROOT install
+}

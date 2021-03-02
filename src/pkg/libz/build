@@ -7,7 +7,7 @@ src=https://sortix.org/libz/release/libz-1.2.8.2015.12.26.$type
 build() {
   LDFLAGS="-W1, -rpath-link=$ROOT/lib" \
     ./configure \
-      --prefix=/
+      --prefix=$PREFIX
 
   make V=1 -j$JOBS
   make DESTDIR=$ROOT install

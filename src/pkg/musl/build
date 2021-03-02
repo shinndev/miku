@@ -1,11 +1,10 @@
-name=musl
 ver=1.2.2
 type=tar.gz
 src=https://musl.libc.org/releases/musl-$ver.$type
 
 build() {
   ./configure \
-    --prefix=/
+    --prefix=$PREFIX
     --syslibdir=/lib
   make -j$JOBS
   make DESTDIR=$ROOT install
