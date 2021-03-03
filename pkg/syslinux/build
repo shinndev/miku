@@ -1,5 +1,11 @@
-src=
+ver=6.03
+type=tar.xz
+src=https://mirrors.edge.kernel.org/pub/linux/utils/boot/syslinux/syslinux-$ver.$type
 
 build() {
+  sed -i 's,/sbin,/bin,' syslinux.spec mk/syslinux.mk
+  sed 's|INSTALLSUBDIRS = com32 utils dosutil|INSTALLSUBDIRS = com32 utils|g' -i Makefile
+  sed '/DIAGDIR/d' -i Makefile
 
+  sed 's|diag libinstaller dos win32 win64 dosutil txt|libinstaller txt|g' -i Makefile
 }
