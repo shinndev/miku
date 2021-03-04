@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if [[ ! -d out ]]; then
-  echo "out/ directory doesn't exist, please use ./build"
+  echo "out directory doesn't exist"
   exit 1
 fi
 
@@ -24,4 +24,4 @@ xorriso \
   -no-emul-boot \
   -iso-level 2 \
   -boot-load-size 4 \
-  -boot-info-table $ISOROOT \
+  -boot-info-table $ISOROOT

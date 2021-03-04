@@ -13,5 +13,5 @@ build() {
     --enable-readline
 
   make -j$JOBS
-  make DESTIR=$ROOT install
+  make DESTDIR=$ROOT install
 }

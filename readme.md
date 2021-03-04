@@ -1,6 +1,3 @@
-# miku-linux
-weeby\\
+# Miku Linux
 
-warning\
-dont use\
-warning
+<img src=".github/banner.jpg">

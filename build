@@ -4,7 +4,7 @@ if [ -d out ]; then
   cp src/bin/nono out/bin/nono
   cd out/bin
   rm -rf ../src/pkg
-  cp -r ../../src/pkg ../src/pkg
+  cp -r ../../pkg ../src/pkg
   ./nono -i base
   cd ../../
   exit 0
