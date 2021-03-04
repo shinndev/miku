@@ -1,6 +1,6 @@
 ### Miku Linux ###
 
-<img src=".github/banner.jpg">
+<img src=".github/miku.jpg">
 
 ### FEATURES
 - only x86_64
@@ -29,4 +29,5 @@ then follow the steps.
 <img src=".github/power.png" width="450" height="150">
 
 https://github.com/ataraxialinux/ataraxia \
-https://github.com/sabotage-linux/sabotage
+https://github.com/sabotage-linux/sabotage \
+https://github.com/radare/slpm
