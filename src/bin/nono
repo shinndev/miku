@@ -13,8 +13,7 @@ SRC=$ROOT/src
 
 PKGS=$SRC/pkgs
 
-PORTS=$SRC/pkg
-PKGDIR=$PORTS/$PKG
+PKGDIR=$SRC/pkg/$PKG
 
 BUILD=$SRC/build
 DL=$SRC/dl
@@ -23,7 +22,7 @@ JOBS=$(nproc)
 PREFIX=""
 
 pkg_open() {
-  if [[ -e $PORTS/$PKG ]]; then
+  if [[ -e $PKGDIR ]]; then
     SMALL=yes
   fi
 
@@ -32,14 +31,15 @@ pkg_open() {
   fi
 
   if [[ -z $SMALL ]]; then
-    echo "package $PKG does not exist"
-    return 1
+    die "package $PKG does not exist"
   fi
 }
 
 pkg_configure() {
+  pkg_open
+
   if [[ $SMALL = yes ]]; then
-    PKGFILE=$PORTS/$PKG
+    PKGFILE=$PKGDIR
   else
     PKGFILE=$PKGDIR/build
     FILES=$PKGDIR/files
@@ -62,7 +62,7 @@ pkg_configure() {
     if [[ ! -z $deps ]]; then
       PKGTYPE=group
     else
-      echo "empty package. $PKG"
+      info "empty package. $PKG"
       return 1
     fi
   else
@@ -70,7 +70,7 @@ pkg_configure() {
       PKGTYPE=git
     elif [[ ! -z $src ]]; then
       if [[ -z $type ]]; then
-        echo "missing type in package $PKG"
+        info "missing type in package $PKG"
         return 1
       fi
 
@@ -144,21 +144,17 @@ pkg_build() {
   fi
 
   if ! build; then
-    echo "build error on package $PKG"
+    info "build error on package $PKG"
     exit 1
   fi
 }
 
 pkg_install() {
-  if ! pkg_open; then
-    return
-  fi
-
   pkg_configure
 
   if [[ $PKGTYPE = normal ]] || [[ $PKGTYPE = git ]]; then
     if pkg_exists $PKG; then
-      echo "package $PKG is already installed"
+      info "package $PKG is already installed"
       return
     fi
 
@@ -170,7 +166,7 @@ pkg_install() {
   fi
 
   if [[ $PKGTYPE = normal ]]; then
-    echo "installing package $FULLNAME"
+    info "installing package $FULLNAME"
 
     if [[ ! -d $WORK ]] && [[ ! -e $FILE ]]; then
       pkg_download
@@ -188,9 +184,9 @@ pkg_install() {
       yes | \cp -rf $FILES/* $WORK
     fi
 
-    echo "building $name"
+    info "building $name"
     pkg_build
-    echo "package $name installed successfully."
+    info "package $name installed successfully."
   elif [[ $PKGTYPE = git ]]; then
     if [[ ! -d $WORK ]]; then
       pkg_download
@@ -205,7 +201,7 @@ pkg_install() {
       pkg_build
     fi
   elif [[ $PKGTYPE = script ]]; then
-    echo "executing script $FULLNAME"
+    info "executing script $FULLNAME"
 
     if [[ -d $FILES ]]; then
       yes | \cp -rf $FILES/* $WORK
@@ -214,9 +210,9 @@ pkg_install() {
     cd $WORK
 
     if build; then
-      echo "script run successfully: $name"
+      info "script run successfully: $name"
     else
-      echo "$name script resulted with error"
+      info "$name script resulted with error"
     fi
 
     return
@@ -232,11 +228,11 @@ pkg_install() {
       done
 
       if [[ $found = no ]]; then
-        echo "nothing to do"
+        info "nothing to do"
       fi
       return
     else
-      echo "installing package group: $FULLNAME"
+      info "installing package group: $FULLNAME"
 
       for dep in "${deps[@]}"; do
         sh $ROOT/bin/nono -i $dep
@@ -247,7 +243,7 @@ pkg_install() {
     fi
   fi
 
-  echo $PKG >> $PKGS
+  info $PKG >> $PKGS
 }
 
 pkg_exists() {
@@ -265,7 +261,7 @@ pkg_remove() {
   fi
 
   if ! pkg_exists; then
-    echo "package $PKG is not installed"
+    info "package $PKG is not installed"
     return
   fi
 
@@ -278,25 +274,50 @@ pkg_info() {
   fi
 
   if [[ ! -z $desc ]]; then
-    echo $desc
+    info $desc
   else
-    echo "no info found"
+    info "no info found"
   fi
 }
 
+function cecho(){
+    local exp=$1;
+    local color=$2;
+    if ! [[ $color =~ '^[0-9]$' ]] ; then
+       case $(echo $color | tr '[:upper:]' '[:lower:]') in
+        black) color=0 ;;
+        red) color=1 ;;
+        green) color=2 ;;
+        yellow) color=3 ;;
+        blue) color=4 ;;
+        magenta) color=5 ;;
+        cyan) color=6 ;;
+        white|*) color=7 ;; # white or invalid color
+       esac
+    fi
+    tput setaf $color;
+    echo $exp;
+    tput sgr0;
+}
+
+info() {
+  cecho "> $1" red
+}
+
 die() {
-  echo $1
+  info $1
   exit 1
 }
 
 help() {
-  echo "nono -i package: install"
-  echo "nono -r package: remove"
-  echo "nono -I package: info"
+  info "nono -i package: install"
+  info "nono -ri package: reinstall"
+  info "nono -r package: remove"
+  info "nono -I package: info"
 }
 
 if [[ -z $PKG ]]; then
-  echo "provide a package name"
+  info "provide a package name"
   exit 1
 fi
 

@@ -1,3 +1,4 @@
 build() {
+  cd ramfs
   chmod -x init
 }

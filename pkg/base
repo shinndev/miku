@@ -1,1 +1,1 @@
-deps=(sbase ubase musl sinit ncurses bash syslinux su)
+deps=(sbase ubase musl sinit bash)

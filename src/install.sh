@@ -1,3 +1,3 @@
 #!/bin/sh
 
-# Miku Linux installer
+# Miku Linux Installer

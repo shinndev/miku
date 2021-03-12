@@ -1,4 +1,3 @@
-name=bash
 ver=5.1
 type=tar.gz
 src=https://ftp.gnu.org/gnu/bash/bash-$ver.$type
