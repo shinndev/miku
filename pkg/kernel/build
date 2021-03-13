@@ -1,9 +1,10 @@
 name="Linux Kernel"
-ver=5.0.2
+ver=5.11.2
 type=tar.xz
 src=https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$ver.$type
 
 build() {
+  cp $STUFF/config .config
   make -j$JOBS
   if [[ ! -e arch/x86/boot/bzImage ]]; then
     return 1

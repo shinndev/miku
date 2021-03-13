@@ -135,6 +135,8 @@ pkg_download() {
 }
 
 pkg_build() {
+  info "building $name"
+
   cd $WORK
 
   if [[ -d $PATCHES ]]; then
@@ -184,9 +186,7 @@ pkg_install() {
       yes | \cp -rf $FILES/* $WORK
     fi
 
-    info "building $name"
     pkg_build
-    info "package $name installed successfully."
   elif [[ $PKGTYPE = git ]]; then
     if [[ ! -d $WORK ]]; then
       pkg_download
@@ -198,6 +198,7 @@ pkg_install() {
       if [[ -d $FILES ]]; then
         yes | \cp -rf $FILES/* $WORK
       fi
+
       pkg_build
     fi
   elif [[ $PKGTYPE = script ]]; then
@@ -230,6 +231,7 @@ pkg_install() {
       if [[ $found = no ]]; then
         info "nothing to do"
       fi
+
       return
     else
       info "installing package group: $FULLNAME"
@@ -243,7 +245,11 @@ pkg_install() {
     fi
   fi
 
-  info $PKG >> $PKGS
+  echo $PKG >> $PKGS
+
+  if [[ $PKGTYPE != group ]]; then
+    info "package $name installed successfully."
+  fi
 }
 
 pkg_exists() {
@@ -256,10 +262,6 @@ pkg_exists() {
 }
 
 pkg_remove() {
-  if ! pkg_open; then
-    return
-  fi
-
   if ! pkg_exists; then
     info "package $PKG is not installed"
     return
@@ -269,9 +271,7 @@ pkg_remove() {
 }
 
 pkg_info() {
-  if ! pkg_open; then
-    return
-  fi
+  pkg_open
 
   if [[ ! -z $desc ]]; then
     info $desc
@@ -305,7 +305,7 @@ info() {
 }
 
 die() {
-  info $1
+  info "$1"
   exit 1
 }
 

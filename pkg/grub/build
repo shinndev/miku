@@ -1,7 +1,0 @@
-src=https://git.savannah.gnu.org/git/grub
-
-build() {
-  ./configure
-  make -j$JOBS
-  make ROOTDIR=$ROOT install
-}

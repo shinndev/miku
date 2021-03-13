@@ -1,1 +1,1 @@
-deps=(sbase ubase musl sinit bash)
+deps=(sbase ubase musl sinit bash mksh)

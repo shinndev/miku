@@ -1,13 +1,50 @@
 #!/bin/sh
 
-if [[ ! -d out ]]; then
-  echo "out directory doesn't exist"
+die() {
+  echo $1
   exit 1
+}
+
+if [[ ! -d out ]]; then
+  die "out directory doesn't exist"
 fi
+
+cd out/bin
+
+if [[ ! -d ../lib/syslinux ]]; then
+  ./nono -i syslinux
+
+  if [[ ! -d ../lib/syslinux ]]; then
+    die "syslinux is failed to build"
+  fi
+fi
+
+if [[ ! -e ../boot/initrd.img ]]; then
+  ./nono -i initramfs
+
+  if [[ ! -e ../boot/initrd.img ]]; then
+    die "initramfs is failed to create"
+  fi
+fi
+
+if [[ ! -e ../boot/vmlinuz ]]; then
+  ./nono -i kernel
+
+  if [[ ! -e ../boot/vmlinuz ]]; then
+    die "kernel is failed to build"
+  fi
+fi
+
+cd ../..
 
 EXCLUDE="src/dl src/build"
 
 ISOROOT=$(mktemp -d)
+
+cp out/lib/syslinux/bios/ldlinux.c32 out/boot
+cp out/lib/syslinux/bios/isolinux.bin out/boot
+cp out/lib/syslinux/bios/isohdpfx.bin out/boot
+
 cp -r out/boot/* $ISOROOT
 
 FAKEROOT=$(mktemp -d)
