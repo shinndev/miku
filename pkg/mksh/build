@@ -1,5 +1,4 @@
 ver=R59c
-desc="a shell"
 type=tgz
 src=https://www.mirbsd.org/MirOS/dist/mir/mksh/mksh-$ver.$type
 
@@ -7,5 +6,5 @@ build() {
   export LDFLAGS="-static"
   sh Build.sh -r
   install -c -s -o root -g bin -m 555 mksh $ROOT/bin/mksh
-  echo /bin/mksh >>/etc/shells
+  echo /bin/mksh >> /etc/shells
 }

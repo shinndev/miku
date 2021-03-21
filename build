@@ -2,9 +2,9 @@
 
 if [ -d out ]; then
   cp src/bin/nono out/bin/nono
+  cp -rf src/* out
+  cp -rf pkg/* out/src/pkg
   cd out/bin
-  rm -rf ../src/pkg
-  cp -r ../../pkg ../src/pkg
   ./nono -i base
   cd ../../
   exit 0
@@ -25,7 +25,7 @@ chmod 1777 tmp
 chmod 700 root
 
 cp -rf ../src/* .
-cp -r ../pkg/* src/pkg
+cp -rf ../pkg/* src/pkg
 
 cd bin
 ./nono -i base

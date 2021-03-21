@@ -1,9 +1,12 @@
 #!/bin/bash
 
-# todo: cache for installed pkgs
-# todo: dont always run nono on every dep
-# todo: multithreading
-# todo: remove type setting, auto detect it
+# todo:
+# cache for installed pkgs
+# dont always run nono on every dep
+# multithreading
+# remove type setting, auto detect it
+# install() function
+# remove() function
 
 PKG=$2
 
@@ -62,16 +65,14 @@ pkg_configure() {
     if [[ ! -z $deps ]]; then
       PKGTYPE=group
     else
-      info "empty package. $PKG"
-      return 1
+      die "empty package: $PKG"
     fi
   else
     if [[ $GIT = yes ]]; then
       PKGTYPE=git
     elif [[ ! -z $src ]]; then
       if [[ -z $type ]]; then
-        info "missing type in package $PKG"
-        return 1
+        die "missing type in package $PKG"
       fi
 
       PKGTYPE=normal
@@ -87,15 +88,9 @@ pkg_configure() {
   fi
 
   if [[ $PKGTYPE = normal ]]; then
-    if [[ -z $ver ]]; then
-      FILENAME=$PKG.$type
-      WORK=$BUILD/$PKG
-    else
-      FILENAME=$PKG-$ver.$type
-      WORK=$BUILD/$PKG-$ver
-    fi
-
+    FILENAME=$FULLNAME.$type
     FILE=$DL/$FILENAME
+    WORK=$BUILD/$FULLNAME
   elif [[ $PKGTYPE = git ]]; then
     WORK=$BUILD/$FULLNAME
     unset $type
@@ -146,8 +141,7 @@ pkg_build() {
   fi
 
   if ! build; then
-    info "build error on package $PKG"
-    exit 1
+    die "build error on $PKG package"
   fi
 }
 
@@ -156,8 +150,7 @@ pkg_install() {
 
   if [[ $PKGTYPE = normal ]] || [[ $PKGTYPE = git ]]; then
     if pkg_exists $PKG; then
-      info "package $PKG is already installed"
-      return
+      die "package $PKG is already installed"
     fi
 
     for dep in "${deps[@]}"; do
@@ -242,13 +235,15 @@ pkg_install() {
           return
         fi
       done
+
+      info "package group $PKG installed successfully"
     fi
   fi
 
   echo $PKG >> $PKGS
 
   if [[ $PKGTYPE != group ]]; then
-    info "package $name installed successfully."
+    info "package $PKG installed successfully"
   fi
 }
 
@@ -263,8 +258,7 @@ pkg_exists() {
 
 pkg_remove() {
   if ! pkg_exists; then
-    info "package $PKG is not installed"
-    return
+    die "package $PKG is not installed"
   fi
 
   sed -i "/$PKG/d" $PKGS
@@ -276,8 +270,9 @@ pkg_info() {
   if [[ ! -z $desc ]]; then
     info $desc
   else
-    info "no info found"
+    echo "no info found"
   fi
+  exit 0
 }
 
 function cecho(){
@@ -301,11 +296,11 @@ function cecho(){
 }
 
 info() {
-  cecho "> $1" red
+  cecho "> $@" red
 }
 
 die() {
-  info "$1"
+  info "$@"
   exit 1
 }
 

@@ -1,4 +1,25 @@
+name=busybox
+ver=1.32.1
+type=tar.bz2
+src=https://busybox.net/downloads/busybox-$ver.$type
+
 build() {
-  cd ramfs
-  chmod -x init
+  make defconfig
+  make -j$JOBS install
+  cd _install
+
+  rm -f linuxrc
+  mkdir dev proc sys
+
+  echo '#!/bin/sh' > init
+  echo 'dmesg -n 1' >> init
+  echo 'mount -t devtmpfs none /dev' >> init
+  echo 'mount -t proc none /proc' >> init
+  echo 'mount -t sysfs none /sys' >> init
+  echo 'setsid cttyhack /bin/sh' >> init
+  chmod +x init
+
+  find . | cpio -R root:root -H newc -o | gzip > $ROOT/boot/initrd.img
+
+  exit 0
 }
