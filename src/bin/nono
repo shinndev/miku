@@ -52,13 +52,10 @@ pkg_configure() {
 
   . $PKGFILE
 
-  if [[ -z $name ]]; then
-    name=$PKG
-  fi
-
-  GIT=no
-  if [[ $src == *"git"* ]] && [[ "`basename $src`" != *"."* ]]; then
-    GIT=yes
+  if [[ ! -z "$name" ]] && [[ $name != *" "* ]]; then
+    name=${name,,}
+    PKG=$name
+    unset $name
   fi
 
   if ! fn_exists build; then
@@ -82,17 +79,26 @@ pkg_configure() {
   fi
 
   if [[ -z $ver ]]; then
-    FULLNAME=$name
+    NAME=$PKG
   else
-    FULLNAME=$name-$ver
+    NAME=$PKG-$ver
+  fi
+
+  if [[ ! -z $src ]]; then
+    FILENAME=$(basename $src)
+  fi
+
+  GIT=no
+  if [[ $src == *"git"* ]] && [[ $FILENAME != *"."* ]]; then
+    GIT=yes
   fi
 
   if [[ $PKGTYPE = normal ]]; then
-    FILENAME=$FULLNAME.$type
     FILE=$DL/$FILENAME
-    WORK=$BUILD/$FULLNAME
+    WORK=$BUILD/$NAME
   elif [[ $PKGTYPE = git ]]; then
-    WORK=$BUILD/$FULLNAME
+    WORK=$BUILD/$NAME
+    unset $FILENAME
     unset $type
   elif [[ $PKGTYPE = script ]]; then
     WORK=$SRC/work
@@ -121,7 +127,7 @@ pkg_download() {
   if [[ $GIT = yes ]]; then
     cd $BUILD
 
-    git clone $src $FULLNAME
+    git clone $src $NAME
   else
     cd $DL
 
@@ -130,7 +136,7 @@ pkg_download() {
 }
 
 pkg_build() {
-  info "building $name"
+  info "building $PKG"
 
   cd $WORK
 
@@ -161,7 +167,7 @@ pkg_install() {
   fi
 
   if [[ $PKGTYPE = normal ]]; then
-    info "installing package $FULLNAME"
+    info "installing package $NAME"
 
     if [[ ! -d $WORK ]] && [[ ! -e $FILE ]]; then
       pkg_download
@@ -186,7 +192,7 @@ pkg_install() {
     fi
 
     if [[ ! -d $WORK ]]; then
-      die "failed to clone $FULLNAME"
+      die "failed to clone $NAME"
     else
       if [[ -d $FILES ]]; then
         yes | \cp -rf $FILES/* $WORK
@@ -195,7 +201,7 @@ pkg_install() {
       pkg_build
     fi
   elif [[ $PKGTYPE = script ]]; then
-    info "executing script $FULLNAME"
+    info "executing script $NAME"
 
     if [[ -d $FILES ]]; then
       yes | \cp -rf $FILES/* $WORK
@@ -204,9 +210,9 @@ pkg_install() {
     cd $WORK
 
     if build; then
-      info "script run successfully: $name"
+      info "script run successfully: $NAME"
     else
-      info "$name script resulted with error"
+      info "$NAME script resulted with error"
     fi
 
     return
@@ -227,7 +233,7 @@ pkg_install() {
 
       return
     else
-      info "installing package group: $FULLNAME"
+      info "installing package group: $NAME"
 
       for dep in "${deps[@]}"; do
         sh $ROOT/bin/nono -i $dep
@@ -268,9 +274,9 @@ pkg_info() {
   pkg_open
 
   if [[ ! -z $desc ]]; then
-    info $desc
+    echo $desc
   else
-    echo "no info found"
+    info "no info found"
   fi
   exit 0
 }
