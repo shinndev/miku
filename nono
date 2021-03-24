@@ -345,5 +345,3 @@ case $1 in
 -I) pkg_info ; ;;
 *) help ; ;;
 esac
-
-exit 0
