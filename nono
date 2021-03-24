@@ -70,7 +70,7 @@ pkg_configure() {
       GIT=yes
     fi
   fi
-  
+
   if ! fn_exists build; then
     if [[ ! -z $deps ]]; then
       PKGTYPE=group
@@ -345,3 +345,5 @@ case $1 in
 -I) pkg_info ; ;;
 *) help ; ;;
 esac
+
+exit 0
