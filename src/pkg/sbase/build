@@ -1,9 +1,7 @@
 src=git://git.suckless.org/sbase
+files=(yes)
 
 build() {
-  make -j$JOBS \
-    PREFIX=$PREFIX \
-    LDFLAGS="-static"
-
-  make DESTDIR=$ROOT install
+  $MAKE PREFIX=$PREFIX
+  $MAKE_INSTALL
 }

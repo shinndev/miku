@@ -2,15 +2,16 @@ ver=5.1
 type=tar.gz
 src=https://ftp.gnu.org/gnu/bash/bash-$ver.$type
 deps=(readline)
+files=(bash)
+
+STATIC=yes
 
 build() {
-  ./configure \
-    --prefix=$PREFIX \
-    --with-curses \
+  $CONFIGURE \
     --without-bash-malloc \
     --disable-nls \
     --with-installed-readline
 
-  make -j$JOBS
-  make DESTDIR=$ROOT install
+  $MAKE
+  $MAKE_INSTALL
 }

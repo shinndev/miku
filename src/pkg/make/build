@@ -1,6 +1,0 @@
-name=make
-desc=
-
-build() {
-  make # xd
-}

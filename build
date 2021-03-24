@@ -5,17 +5,15 @@ if [ ! $EUID -ne 0 ]; then
   exit 1
 fi
 
-WORK=$PWD
-
 if ! ./scripts/deps; then
   exit 1
 fi
 
-./scripts/rootfs $WORK
+./scripts/rootfs
 
 cp nono rootfs/bin
 
-export ROOT=$WORK/rootfs
+export ROOT=$PWD/rootfs
 ./nono -i base
 
 if ! $(./nono -e base); then
@@ -29,7 +27,7 @@ read -s -t 69 -n 1 answer
 if [ $? != 0 ]; then
   echo "timeout"
 elif [ $answer = y ]; then
-  ./scripts/iso $WORK
+  ./scripts/iso
 else
   echo "ok."
 fi

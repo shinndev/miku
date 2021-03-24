@@ -1,8 +1,0 @@
-name=htop
-desc="process viewer"
-ver=3.0.0beta5
-type=zip
-src=https://github.com/hishamhm/htop/archive/$ver.$type
-
-build() {
-}

@@ -4,11 +4,6 @@ if [[ -z $ROOT ]]; then
   ROOT="$(dirname "$PWD")"
 fi
 
-if [[ ! -d $ROOT/pkg ]]; then
-  echo "invalid root"
-  exit 1
-fi
-
 PKG=$2
 
 NONO=$PWD/nono
@@ -20,11 +15,20 @@ SRC=$ROOT/src
 BUILD=$SRC/build
 DL=$SRC/dl
 
-JOBS=$(nproc)
 PREFIX=""
+TARGET="x86_64-linux-musl"
+HOST=$(gcc -dumpmachine)
 
-if [[ -z $TARGET ]]; then
-  TARGET=$ROOT
+OPT=yes
+SECURE=yes
+STATIC=no
+
+CONFIGURE="./configure --prefix=$PREFIX --with-sysroot=$ROOT"
+MAKE="make -j$(nproc)"
+MAKE_INSTALL="$MAKE DESTDIR=$ROOT install"
+
+if [[ -z $INSTALL ]]; then
+  INSTALL=$ROOT
 fi
 
 pkg_open() {
@@ -81,6 +85,10 @@ pkg_configure() {
     if [[ $GIT = yes ]]; then
       PKGTYPE=git
     elif [[ ! -z $src ]]; then
+      if [[ -z $type ]]; then
+        die "missing type in package $PKG"
+      fi
+
       PKGTYPE=normal
     else
       PKGTYPE=script
@@ -106,6 +114,35 @@ pkg_configure() {
   elif [[ $PKGTYPE = group ]]; then
     unset $ver
   fi
+
+  if [[ $PKGTYPE = normal ]] || [[ $PKGTYPE = git ]]; then
+    [[ -z $files ]] && \
+      die "missing files setting"
+  fi
+
+  # Flags
+
+  CFLAGS="-fno-unwind-tables -fno-asynchronous-unwind-tables -Wa,--noexecstack -fno-math-errno"
+  LDFLAGS="-Wl,-z,relro,-z,now -Wl,-z,text"
+
+  if [[ $OPT = yes ]]; then
+    CFLAGS="$CFLAGS -O3 -fstrength-reduce -fthread-jumps -fcse-follow-jumps -fcse-skip-blocks -frerun-cse-after-loop -fexpensive-optimizations -fforce-addr -fomit-frame-pointer"
+  else
+    CFLAGS="$CFLAGS -Os -g0 -fdata-sections -ffunction-sections"
+    LDFLAGS="$LDFLAGS -Wl,--gc-sections"
+  fi
+
+  if [[ $SECURE = yes ]]; then
+    CFLAGS="$CFLAGS -fPIE -fstack-protector"
+    LDFLAGS="$LDFLAGS -fpie"
+  fi
+
+  if [[ $STATIC = yes ]]; then
+    LDFLAGS="$LDFLAGS -static"
+  fi
+
+  export CFLAGS=$CFLAGS
+  export LDFLAGS=$LDFLAGS
 }
 
 pkg_extract() {
@@ -146,9 +183,16 @@ pkg_build() {
     done
   fi
 
-  if ! build; then
+  build
+
+  error=yes
+
+  for file in "${files[@]}"; do
+    [[ -d $file ]] || [[ -e $file ]] && error=no
+  done
+
+  [[ $error = yes ]] && \
     die "build error on $PKG package"
-  fi
 }
 
 pkg_install() {
@@ -164,6 +208,18 @@ pkg_install() {
         sh $NONO -i $dep
       fi
     done
+
+    installed=no
+
+    for file in "${files[@]}"; do
+      [[ -d $file ]] || [[ -e $file ]] && installed=yes
+    done
+
+    if [[ $installed = yes ]]; then
+      info "installed missing built package: $PKG"
+      echo $PKG >> $PKGS
+      return
+    fi
   fi
 
   if [[ $PKGTYPE = normal ]]; then
@@ -327,6 +383,11 @@ help() {
   info "nono -I package: info"
   info "nono -e package: exists"
 }
+
+if [[ ! -d $ROOT/pkg ]]; then
+  echo "invalid root"
+  exit 1
+fi
 
 if [[ -z $PKG ]]; then
   info "provide a package name"

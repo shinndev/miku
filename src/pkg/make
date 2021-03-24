@@ -1,0 +1,12 @@
+ver=3.82
+type=tar.bz2
+src=http://ftp.gnu.org/gnu/make/make-$ver.$type
+files=(make)
+
+build() {
+  $CONFIGURE \
+    --disable-nls
+
+  $MAKE
+  $MAKE_INSTALL
+}
