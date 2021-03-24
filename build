@@ -1,31 +1,12 @@
 #!/bin/sh
 
-if [ -d out ]; then
-  cp src/bin/nono out/bin/nono
-  cp -rf src/* out
-  cp -rf pkg/* out/src/pkg
-  cd out/bin
-  ./nono -i base
-  cd ../../
-  exit 0
-fi
+WORK=$PWD
 
-mkdir out
-cd out
+./scripts/rootfs $WORK
 
-mkdir -p bin boot dev etc home lib mnt proc opt root share srv src sys tmp var
-mkdir -p src/build src/dl src/pkg src/work
-
-touch src/pkgs
-
-ln -sfn . usr
-ln -sfn bin sbin
-
-chmod 1777 tmp
-chmod 700 root
-
-cp -rf ../src/* .
-cp -rf ../pkg/* src/pkg
-
-cd bin
+export ROOT=$WORK/rootfs
 ./nono -i base
+
+cp nono rootfs/bin
+
+./scripts/iso $WORK

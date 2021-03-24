@@ -1,0 +1,9 @@
+build() {
+  if [[ -d $TARGET/bin ]]; then
+    TARGET=$TARGET/bin
+  else
+    TARGET=$TARGET
+  fi
+
+  cp $NONO $TARGET
+}

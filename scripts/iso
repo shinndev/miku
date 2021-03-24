@@ -1,0 +1,63 @@
+#!/bin/sh
+
+die() {
+  echo $1
+  exit 1
+}
+
+if [[ ! -d rootfs ]]; then
+  die "rootfs doesn't exist"
+fi
+
+ISOROOT=$PWD/out
+
+cd rootfs/bin
+
+export TARGET=$ISOROOT
+
+if [[ ! -d ../lib/syslinux ]]; then
+  ./nono -i syslinux
+
+  if [[ ! -d ../lib/syslinux ]]; then
+    die "syslinux is failed to build"
+  fi
+fi
+
+if [[ ! -e $ISOROOT/vmlinuz ]]; then
+  ./nono -i kernel
+
+  if [[ ! -e $ISOROOT/vmlinuz ]]; then
+    die "kernel is failed to build"
+  fi
+fi
+
+cd ../..
+
+mkdir -p $ISOROOT
+
+cp rootfs/lib/syslinux/bios/ldlinux.c32 $ISOROOT
+cp rootfs/lib/syslinux/bios/isolinux.bin $ISOROOT
+cp rootfs/lib/syslinux/bios/isohdpfx.bin $ISOROOT
+
+cp -r stuff/isolinux.cfg $ISOROOT
+
+cd rootfs
+
+mv src ../state
+
+find . | cpio -R root:root -H newc -o | xz -9 --check=none > $ISOROOT/rootfs.img
+
+mv ../state src
+
+cd ..
+
+xorriso \
+  -as mkisofs \
+  -o mikulinux.iso \
+  -b isolinux.bin \
+  -isohybrid-mbr $ISOROOT/isohdpfx.bin \
+  -c boot.cat \
+  -no-emul-boot \
+  -iso-level 2 \
+  -boot-load-size 4 \
+  -boot-info-table $ISOROOT

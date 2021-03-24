@@ -4,25 +4,35 @@
 # cache for installed pkgs
 # dont always run nono on every dep
 # multithreading
-# remove type setting, auto detect it
-# install() function
+# auto detect filetype
 # remove() function
+
+if [[ -z $ROOT ]]; then
+  ROOT="$(dirname "$PWD")"
+fi
+
+if [[ ! -d $ROOT/pkg ]]; then
+  echo "invalid root"
+  exit 1
+fi
 
 PKG=$2
 
-ROOT="$(dirname "$PWD")"
+NONO=$PWD/nono
 
+PKGDIR=$ROOT/pkg/$PKG
+PKGS=$ROOT/pkgs
 SRC=$ROOT/src
-
-PKGS=$SRC/pkgs
-
-PKGDIR=$SRC/pkg/$PKG
 
 BUILD=$SRC/build
 DL=$SRC/dl
 
 JOBS=$(nproc)
 PREFIX=""
+
+if [[ -z $TARGET ]]; then
+  TARGET=$ROOT
+fi
 
 pkg_open() {
   if [[ -e $PKGDIR ]]; then
@@ -58,6 +68,15 @@ pkg_configure() {
     unset $name
   fi
 
+  if [[ ! -z $src ]]; then
+    FILENAME=$(basename $src)
+  fi
+
+  GIT=no
+  if [[ $src == *"git"* ]] && [[ $FILENAME != *"."* ]]; then
+    GIT=yes
+  fi
+
   if ! fn_exists build; then
     if [[ ! -z $deps ]]; then
       PKGTYPE=group
@@ -82,15 +101,6 @@ pkg_configure() {
     NAME=$PKG
   else
     NAME=$PKG-$ver
-  fi
-
-  if [[ ! -z $src ]]; then
-    FILENAME=$(basename $src)
-  fi
-
-  GIT=no
-  if [[ $src == *"git"* ]] && [[ $FILENAME != *"."* ]]; then
-    GIT=yes
   fi
 
   if [[ $PKGTYPE = normal ]]; then
@@ -136,7 +146,7 @@ pkg_download() {
 }
 
 pkg_build() {
-  info "building $PKG"
+  info "building $NAME"
 
   cd $WORK
 
@@ -161,7 +171,7 @@ pkg_install() {
 
     for dep in "${deps[@]}"; do
       if ! pkg_exists $dep; then
-        sh $ROOT/bin/nono -i $dep
+        sh $NONO -i $dep $ROOT
       fi
     done
   fi
@@ -186,6 +196,10 @@ pkg_install() {
     fi
 
     pkg_build
+
+    if fn_exists install; then
+      install
+    fi
   elif [[ $PKGTYPE = git ]]; then
     if [[ ! -d $WORK ]]; then
       pkg_download
@@ -199,6 +213,10 @@ pkg_install() {
       fi
 
       pkg_build
+
+      if fn_exists install; then
+        install
+      fi
     fi
   elif [[ $PKGTYPE = script ]]; then
     info "executing script $NAME"
@@ -223,7 +241,7 @@ pkg_install() {
       for dep in "${deps[@]}"; do
         if ! pkg_exists $dep; then
           found=yes
-          sh $ROOT/bin/nono -i $dep
+          sh $NONO -i $dep $ROOT
         fi
       done
 
@@ -236,7 +254,7 @@ pkg_install() {
       info "installing package group: $NAME"
 
       for dep in "${deps[@]}"; do
-        sh $ROOT/bin/nono -i $dep
+        sh $NONO -i $dep $ROOT
         if ! pkg_exists $dep; then
           return
         fi

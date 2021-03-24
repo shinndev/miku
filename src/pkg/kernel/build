@@ -9,5 +9,14 @@ build() {
   if [[ ! -e arch/x86/boot/bzImage ]]; then
     return 1
   fi
-  cp arch/x86/boot/bzImage $ROOT/boot/vmlinuz
+}
+
+install() {
+  if [[ -d $TARGET/boot ]]; then
+    TARGET=$TARGET/boot/vmlinuz
+  else
+    TARGET=$TARGET/vmlinuz
+  fi
+
+  cp arch/x86/boot/bzImage $TARGET
 }
