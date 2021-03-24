@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ ! $EUID -ne 0 ]; then
+  echo "please don't run as root"
+  exit 1
+fi
+
 WORK=$PWD
 
 if ! ./scripts/deps; then
@@ -8,9 +13,23 @@ fi
 
 ./scripts/rootfs $WORK
 
+cp nono rootfs/bin
+
 export ROOT=$WORK/rootfs
 ./nono -i base
 
-cp nono rootfs/bin
+if ! $(./nono -e base); then
+  echo "failed to build mikulinux"
+  exit 1
+fi
 
-./scripts/iso $WORK
+echo "wanna make iso? (y/n)"
+read -s -t 69 -n 1 answer
+
+if [ $? != 0 ]; then
+  echo "timeout"
+elif [ $answer = y ]; then
+  ./scripts/iso $WORK
+else
+  echo "ok."
+fi

@@ -19,4 +19,13 @@ ln -sfn bin sbin
 chmod 1777 tmp
 chmod 700 root
 
+mknod dev/null c 1 3
+mknod dev/zero c 1 5
+mknod dev/tty  c 5 0
+mknod dev/random c 1 8
+mknod dev/urandom c 1 9
+
+chmod 0666 dev/{null,tty,zero}
+chown root.tty dev/tty
+
 cp -rf ../src/* .

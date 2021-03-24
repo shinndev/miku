@@ -1,4 +1,3 @@
-name=GCC
 ver=10.2.0
 type=tar.xz
 src=https://ftp.gnu.org/gnu/gcc/gcc-$ver/gcc-$ver.$type

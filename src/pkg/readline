@@ -1,0 +1,15 @@
+ver=7.0
+type=tar.gz
+src=https://ftp.gnu.org/gnu/readline/readline-$ver.$type
+deps=(ncurses)
+
+build() {
+  ./configure \
+    --prefix=$PREFIX \
+    --with-curses \
+    --enable-shared \
+    --enable-static
+
+  make -j$JOBS
+  make DESTDIR=$ROOT install
+}

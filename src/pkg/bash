@@ -1,7 +1,7 @@
 ver=5.1
 type=tar.gz
 src=https://ftp.gnu.org/gnu/bash/bash-$ver.$type
-deps=(ncurses)
+deps=(readline)
 
 build() {
   ./configure \
@@ -9,7 +9,7 @@ build() {
     --with-curses \
     --without-bash-malloc \
     --disable-nls \
-    --enable-readline
+    --with-installed-readline
 
   make -j$JOBS
   make DESTDIR=$ROOT install

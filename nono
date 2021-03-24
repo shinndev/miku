@@ -325,6 +325,7 @@ help() {
   info "nono -ri package: reinstall"
   info "nono -r package: remove"
   info "nono -I package: info"
+  info "nono -e package: exists"
 }
 
 if [[ -z $PKG ]]; then
@@ -343,5 +344,6 @@ case $1 in
 -i) pkg_install ; ;;
 -r) pkg_remove ; ;;
 -I) pkg_info ; ;;
+-e) exit $(pkg_exists $PKG) ; ;;
 *) help ; ;;
 esac
