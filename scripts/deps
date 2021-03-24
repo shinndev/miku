@@ -1,0 +1,20 @@
+#!/bin/sh
+
+deps=(xorriso wget unzip tar patch sed git gcc cpio xz)
+
+fail=no
+
+no() {
+  echo "dependency $1 not found"
+  fail=yes
+}
+
+for dep in ${deps[@]}; do
+  if [[ ! -e /bin/$dep ]]; then
+    no "$dep"
+  fi
+done
+
+if [[ $fail = yes ]]; then
+  exit 1
+fi

@@ -2,6 +2,10 @@
 
 WORK=$PWD
 
+if ! ./scripts/deps; then
+  exit 1
+fi
+
 ./scripts/rootfs $WORK
 
 export ROOT=$WORK/rootfs
