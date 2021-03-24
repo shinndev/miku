@@ -45,6 +45,8 @@ cd rootfs
 
 mv src ../state
 
+mkdir -p src/build src/dl src/work
+
 find . | cpio -R root:root -H newc -o | xz -9 --check=none > $ISOROOT/rootfs.img
 
 mv ../state src
