@@ -378,21 +378,16 @@ die() {
 
 help() {
   info "nono -i package: install"
-  info "nono -ri package: reinstall"
   info "nono -r package: remove"
   info "nono -I package: info"
   info "nono -e package: exists"
 }
 
-if [[ ! -d $ROOT/pkg ]]; then
-  echo "invalid root"
-  exit 1
-fi
+[[ ! -d $ROOT/pkg ]] && \
+  die "invalid root"
 
-if [[ -z $PKG ]]; then
-  info "provide a package name"
-  exit 1
-fi
+[[ -z $PKG ]] && \
+  die "provide a package name"
 
 fn_exists() {
   if type $1 2>/dev/null | grep -q 'function'; then

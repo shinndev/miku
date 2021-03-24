@@ -1,6 +1,8 @@
 src=git://git.suckless.org/sbase
 files=(yes)
 
+STATIC=yes
+
 build() {
   $MAKE PREFIX=$PREFIX
   $MAKE_INSTALL

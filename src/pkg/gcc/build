@@ -6,7 +6,6 @@ build() {
   export GCCOPTS="--with-arch=x86_64"
 
   $CONFIGURE $GCCOPTS \
-    --prefix=$PREFIX \
     --libdir=/lib \
     --libexecdir=/lib \
     --enable-threads=posix \

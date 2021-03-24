@@ -3,11 +3,10 @@ files=(sinit)
 
 build() {
   $MAKE PREFIX=$PREFIX
+  $MAKE_INSTALL
 }
 
 install() {
-  $MAKE_INSTALL
-
   ln -sf $INSTALL/bin/sinit $INSTALL/init
   chmod +x $INSTALL/init
 }
