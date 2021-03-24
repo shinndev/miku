@@ -1,3 +1,8 @@
 #!/bin/sh
 
+if [[ ! -e /bin/qemu-system-x86_64 ]]; then
+  echo "no qemu found"
+  exit 1
+fi
+
 qemu-system-x86_64 -boot d -cdrom mikulinux.iso -m 512

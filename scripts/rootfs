@@ -1,0 +1,22 @@
+#!/bin/sh
+
+if [[ -d rootfs ]]; then
+  cp -rf src/* rootfs
+  exit 0
+fi
+
+mkdir rootfs
+cd rootfs
+
+mkdir -p bin dev etc home lib mnt proc opt root share srv src sys tmp var
+mkdir -p src/build src/dl src/work
+
+touch pkgs
+
+ln -sfn . usr
+ln -sfn bin sbin
+
+chmod 1777 tmp
+chmod 700 root
+
+cp -rf ../src/* .
