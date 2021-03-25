@@ -11,8 +11,6 @@ fi
 
 ./scripts/rootfs
 
-cp nono rootfs/bin
-
 export ROOT=$PWD/rootfs
 ./nono -i base
 
@@ -20,6 +18,9 @@ if ! $(./nono -e base); then
   echo "failed to build mikulinux"
   exit 1
 fi
+
+cp nono rootfs/bin
+cp config rootfs/src
 
 echo "wanna make iso? (y/n)"
 read -s -t 69 -n 1 answer

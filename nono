@@ -3,7 +3,8 @@
 PKG=$2
 PKGS=$ROOT/pkgs
 
-NONO=$PWD/nono
+BASE=$PWD
+NONO=$BASE/nono
 
 config() {
   [[ -z $ROOT ]] && \
@@ -35,17 +36,16 @@ pkg_open() {
 pkg_configure() {
   pkg_open
 
-  if [[ -e $PWD/config ]]; then
-    . $PWD/config
+  if [[ -e $BASE/config ]]; then
+    . $BASE/config
   elif [[ -e $SRC/config ]]; then
     . $SRC/config
   fi
 
   [[ -z $CC ]] && CC=gcc
 
-  if [[ ! -e /bin/$CC ]]; then
+  [[ -e /bin/$CC ]] || \
     die "missing compiler: $CC"
-  fi
 
   if [[ $SMALL = yes ]]; then
     PKGFILE=$PKGDIR
@@ -136,9 +136,10 @@ pkg_configure() {
 
   CONFIGURE="./configure --prefix=$PREFIX --with-sysroot=$ROOT"
   MAKE="make -j$JOBS"
-  MAKE_INSTALL="$MAKE DESTDIR=$ROOT install"
+  MAKE_INSTALL="make PREFIX=$PREFIX DESTDIR=$ROOT install"
 
   export PREFIX=$PREFIX
+  export DESTDIR=$ROOT
 
   [[ -z $OPT ]] && OPT=yes
   [[ -z $SECURE ]] && SECURE=yes
@@ -211,7 +212,7 @@ pkg_build() {
 
   build
 
-  error=yes
+  local error=yes
 
   for file in "${files[@]}"; do
     [[ -d $file ]] || [[ -e $file ]] && error=no
@@ -242,7 +243,7 @@ pkg_install() {
       for file in "${files[@]}"; do
         [[ -d $file ]] || [[ -e $file ]] && installed=yes
       done
-      cd $ROOT
+      cd $BASE
     fi
 
     if [[ $installed = yes ]]; then
