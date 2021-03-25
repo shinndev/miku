@@ -12,11 +12,3 @@ configure() {
     --with-sysroot=$ROOT \
     --disable-nls
 }
-
-build() {
-  $MAKE SHLIB_LIBS="-L$LIB -lncursesw"
-}
-
-install() {
-  $MAKE SHLIB_LIBS="-L$LIB -lncursesw" install
-}

@@ -124,10 +124,9 @@ pkg() {
   TARGET=$ARCH-linux-musl
   HOST=$($CC -dumpmachine)
 
-  DESTDIR=$ROOT
-
   CONFIGURE="./configure --prefix=$PREFIX"
   MAKE="make -j$JOBS"
+  INSTALL="$MAKE DESTDIR=$ROOT install"
 
   BIN_PREFIX=$PREFIX/bin
   BIN=$ROOT$BIN_PREFIX
@@ -180,7 +179,7 @@ pkg() {
   unset $OPT
   unset $SECURE
 
-  export PREFIX DESTDIR
+  export PREFIX
   export CFLAGS LDFLAGS
 }
 
@@ -205,19 +204,17 @@ pkg_download() {
   if [[ $GIT = yes ]]; then
     cd $BUILD
 
-    if [[ $SILENT = yes ]]; then
-      git clone $src $NAME &>/dev/null
-    else
-      git clone $src $NAME
-    fi
+    command="git clone $src $NAME --recurse-submodules"
   else
     cd $DL
 
-    if [[ $SILENT = yes ]]; then
-      wget --no-check-certificate $src -O $FILENAME &>/dev/null
-    else
-      wget --no-check-certificate $src -O $FILENAME
-    fi
+    command="wget --no-check-certificate $src -O $FILENAME"
+  fi
+
+  if [[ $SILENT = yes ]]; then
+    $command &>/dev/null
+  else
+    $command
   fi
 }
 
@@ -297,7 +294,7 @@ pkg_package() {
       grep -q 'install:' Makefile &>/dev/null
 
       if [ $? -eq 0 ]; then
-        $MAKE install
+        $INSTALL
       fi
     fi
   else
@@ -327,9 +324,11 @@ pkg_install() {
 
     if [[ -d $WORK ]]; then
       cd $WORK
+
       for file in "${files[@]}"; do
         [[ -d $file ]] || [[ -e $file ]] && installed=yes
       done
+
       cd $BASE
     fi
 
@@ -399,16 +398,12 @@ pkg_install() {
 
       return
     else
-      #info "installing package group: $NAME"
-
       for dep in "${deps[@]}"; do
         sh $NONO -i $dep
         if ! pkg_exists $dep; then
           return
         fi
       done
-
-      #info "package group $PKG installed successfully"
     fi
   fi
 

@@ -2,7 +2,7 @@
 
 if [ ! $EUID -ne 0 ]; then
   echo "please don't run as root"
-  #exit 1
+  exit 1
 fi
 
 if ! ./scripts/deps; then

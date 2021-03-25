@@ -4,11 +4,13 @@ src=https://ftp.gnu.org/pub/gnu/ncurses/ncurses-$ver.$type
 files=(lib/libncursesw.a)
 
 configure() {
-  export CFLAGS="$CFLAGS -D_GNU_SOURCE"
+  #export CFLAGS="$CFLAGS -D_GNU_SOURCE"
 
   $CONFIGURE \
     --includedir=$INCLUDE_PREFIX \
     --mandir=$MAN_PREFIX \
+    --build=$TARGET \
+    --host=$TARGET \
     --with-normal \
     --without-tests \
     --enable-widec \

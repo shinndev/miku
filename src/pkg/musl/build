@@ -9,7 +9,7 @@ configure() {
 }
 
 install() {
-  $MAKE install
+  $INSTALL
 
   #ln -sf $LIB/libc.so $LIB/bin/ldd
 
