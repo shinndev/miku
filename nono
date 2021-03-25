@@ -1,52 +1,51 @@
 #!/bin/bash
 
-if [[ -z $ROOT ]]; then
-  ROOT="$(dirname "$PWD")"
-fi
-
 PKG=$2
+PKGS=$ROOT/pkgs
 
 NONO=$PWD/nono
 
-PKGDIR=$ROOT/pkg/$PKG
-PKGS=$ROOT/pkgs
-SRC=$ROOT/src
+config() {
+  [[ -z $ROOT ]] && \
+    ROOT=$(dirname $PWD)
 
-BUILD=$SRC/build
-DL=$SRC/dl
+  [[ -d $ROOT/pkg ]] || \
+    die "invalid root"
 
-PREFIX=""
-TARGET="x86_64-linux-musl"
-HOST=$(gcc -dumpmachine)
+  [[ -z $INSTALL ]] && \
+    INSTALL=$ROOT
 
-OPT=yes
-SECURE=yes
-STATIC=no
-
-CONFIGURE="./configure --prefix=$PREFIX --with-sysroot=$ROOT"
-MAKE="make -j$(nproc)"
-MAKE_INSTALL="$MAKE DESTDIR=$ROOT install"
-
-if [[ -z $INSTALL ]]; then
-  INSTALL=$ROOT
-fi
+  SRC=$ROOT/src
+  PKGDIR=$ROOT/pkg/$PKG
+}
 
 pkg_open() {
-  if [[ -e $PKGDIR ]]; then
+  config
+
+  [[ -e $PKGDIR ]] && \
     SMALL=yes
-  fi
 
-  if [[ -d $PKGDIR ]]; then
+  [[ -d $PKGDIR ]] && \
     SMALL=no
-  fi
 
-  if [[ -z $SMALL ]]; then
+  [[ -z $SMALL ]] && \
     die "package $PKG does not exist"
-  fi
 }
 
 pkg_configure() {
   pkg_open
+
+  if [[ -e $PWD/config ]]; then
+    . $PWD/config
+  elif [[ -e $SRC/config ]]; then
+    . $SRC/config
+  fi
+
+  [[ -z $CC ]] && CC=gcc
+
+  if [[ ! -e /bin/$CC ]]; then
+    die "missing compiler: $CC"
+  fi
 
   if [[ $SMALL = yes ]]; then
     PKGFILE=$PKGDIR
@@ -101,15 +100,21 @@ pkg_configure() {
     NAME=$PKG-$ver
   fi
 
+  BUILD=$SRC/build
+
   if [[ $PKGTYPE = normal ]]; then
+    DL=$SRC/dl
+
     FILE=$DL/$FILENAME
     WORK=$BUILD/$NAME
   elif [[ $PKGTYPE = git ]]; then
     WORK=$BUILD/$NAME
+
     unset $FILENAME
     unset $type
   elif [[ $PKGTYPE = script ]]; then
     WORK=$SRC/work
+
     unset $type
   elif [[ $PKGTYPE = group ]]; then
     unset $ver
@@ -120,7 +125,24 @@ pkg_configure() {
       die "missing files setting"
   fi
 
-  # Flags
+  local preffered=$(($(nproc)+1))
+
+  if [[ -z $JOBS ]] || (($JOBS > $preffered)); then
+    JOBS=$preffered
+  fi
+
+  TARGET="x86_64-linux-musl"
+  HOST=$($CC -dumpmachine)
+
+  CONFIGURE="./configure --prefix=$PREFIX --with-sysroot=$ROOT"
+  MAKE="make -j$JOBS"
+  MAKE_INSTALL="$MAKE DESTDIR=$ROOT install"
+
+  export PREFIX=$PREFIX
+
+  [[ -z $OPT ]] && OPT=yes
+  [[ -z $SECURE ]] && SECURE=yes
+  [[ -z $STATIC ]] && STATIC=no
 
   CFLAGS="-fno-unwind-tables -fno-asynchronous-unwind-tables -Wa,--noexecstack -fno-math-errno"
   LDFLAGS="-Wl,-z,relro,-z,now -Wl,-z,text"
@@ -140,6 +162,10 @@ pkg_configure() {
   if [[ $STATIC = yes ]]; then
     LDFLAGS="$LDFLAGS -static"
   fi
+
+  unset $OPT
+  unset $SECURE
+  unset $STATIC
 
   export CFLAGS=$CFLAGS
   export LDFLAGS=$LDFLAGS
@@ -209,11 +235,15 @@ pkg_install() {
       fi
     done
 
-    installed=no
+    local installed=no
 
-    for file in "${files[@]}"; do
-      [[ -d $file ]] || [[ -e $file ]] && installed=yes
-    done
+    if [[ -d $WORK ]]; then
+      cd $WORK
+      for file in "${files[@]}"; do
+        [[ -d $file ]] || [[ -e $file ]] && installed=yes
+      done
+      cd $ROOT
+    fi
 
     if [[ $installed = yes ]]; then
       info "installed missing built package: $PKG"
@@ -339,12 +369,18 @@ pkg_remove() {
 pkg_info() {
   pkg_open
 
-  if [[ ! -z $desc ]]; then
-    echo $desc
+  if [[ $SMALL = yes ]]; then
+    PKGFILE=$PKGDIR
   else
-    info "no info found"
+    PKGFILE=$PKGDIR/build
   fi
-  exit 0
+
+  . $PKGFILE
+
+  [[ -z $desc ]] && \
+    die "no info found"
+
+  echo $desc
 }
 
 function cecho(){
@@ -382,9 +418,6 @@ help() {
   info "nono -I package: info"
   info "nono -e package: exists"
 }
-
-[[ ! -d $ROOT/pkg ]] && \
-  die "invalid root"
 
 [[ -z $PKG ]] && \
   die "provide a package name"

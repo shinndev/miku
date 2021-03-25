@@ -1,0 +1,7 @@
+CC=gcc
+JOBS=
+PREFIX=
+
+OPT=yes
+SECURE=yes
+STATIC=no
