@@ -15,6 +15,7 @@ touch pkgs
 
 ln -sfn . usr
 ln -sfn bin sbin
+ln -sfn lib lib64
 
 chmod 1777 tmp
 chmod 700 root

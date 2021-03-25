@@ -1,7 +1,8 @@
-CC=gcc
-JOBS=
-PREFIX=
+DEBUG=yes
 
 OPT=yes
 SECURE=yes
-STATIC=no
+
+CC=gcc
+JOBS=
+PREFIX=""

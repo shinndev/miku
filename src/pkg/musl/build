@@ -1,10 +1,20 @@
 ver=1.2.2
 type=tar.gz
 src=https://musl.libc.org/releases/musl-$ver.$type
-files=(lib/libc.a)
+files=(lib/libc.so)
 
-build() {
-  $CONFIGURE
-  $MAKE
-  $MAKE_INSTALL
+configure() {
+  $CONFIGURE \
+    --syslibdir=$LIB_PREFIX
+}
+
+install() {
+  $MAKE install
+
+  #ln -sf $LIB/libc.so $LIB/bin/ldd
+
+  ln -sf $LIB/libc.so $LIB/libc.so.6
+  ln -sf $LIB/libc.so $LIB/ld-linux-x86-64.so.2
+
+  echo $LIB_PREFIX >> $ROOT/etc/ld-musl-$ARCH.path
 }

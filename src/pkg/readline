@@ -4,12 +4,19 @@ src=https://ftp.gnu.org/gnu/readline/readline-$ver.$type
 deps=(ncurses)
 files=(libreadline.a)
 
-build() {
+configure() {
+  CPPFLAGS="-D_GNU_SOURCE" \
+  LDFLAGS="$LDFLAGS -Wl,-rpath-link=$LIB" \
   $CONFIGURE \
-    --with-curses \
-    --enable-shared \
-    --enable-static
+    --host=$HOST \
+    --with-sysroot=$ROOT \
+    --disable-nls
+}
 
-  $MAKE
-  $MAKE_INSTALL
+build() {
+  $MAKE SHLIB_LIBS="-L$LIB -lncursesw"
+}
+
+install() {
+  $MAKE SHLIB_LIBS="-L$LIB -lncursesw" install
 }

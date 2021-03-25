@@ -1,11 +1,6 @@
 src=git://git.suckless.org/sinit
 files=(sinit)
 
-build() {
-  $MAKE PREFIX=$PREFIX
-  $MAKE_INSTALL
-}
-
 install() {
   ln -sf $INSTALL/bin/sinit $INSTALL/init
   chmod +x $INSTALL/init

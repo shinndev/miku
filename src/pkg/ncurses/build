@@ -1,23 +1,21 @@
 ver=5.9
 type=tar.gz
 src=https://ftp.gnu.org/pub/gnu/ncurses/ncurses-$ver.$type
+files=(lib/libncursesw.a)
 
-build() {
-  export CFLAGS="$CFLAGS -D_GNU_SOURCE -fPIC"
+configure() {
+  export CFLAGS="$CFLAGS -D_GNU_SOURCE"
 
-  ./configure \
+  $CONFIGURE \
+    --includedir=$INCLUDE_PREFIX \
+    --mandir=$MAN_PREFIX \
     --with-normal \
     --without-tests \
     --enable-widec \
     --with-shared \
     --enable-sigwinch \
     --with-fallbacks="linux vt100 xterm xterm256-color" \
-    --includedir=/include \
-    --mandir=/share/man \
     --disable-nls \
     --without-dlsym \
-    --without-cxx-binding \
-
-  $MAKE
-  $MAKE_INSTALL
+    --without-cxx-binding
 }

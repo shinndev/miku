@@ -1,6 +1,6 @@
 #!/bin/sh
 
-deps=(xorriso wget unzip tar patch sed git gcc cpio xz)
+deps=(xorriso wget unzip tar patch sed git gcc cpio xz grep)
 
 fail=no
 
