@@ -1,7 +1,6 @@
 ver=1.20.7
 commit=f04f24dd5ca5c1c13608b144ab66e2ccd47f106a
-type=tar.gz
-src=https://github.com/telmich/gpm/archive/$commit.$type
+src=https://github.com/telmich/gpm/archive/$commit.tar.gz
 deps=(ncurses)
 files=(src/gpm)
 
@@ -13,10 +12,4 @@ configure() {
   $CONFIGURE \
     --sbindir=$BIN_PREFIX
     --sysconfdir=$ETC_PREFIX
-}
-
-install() {
-  cd $LIB
-  ln -sf libgpm.so.2.* libgpm.so
-  chmod 0755 $LIB/libgpm.so.*
 }

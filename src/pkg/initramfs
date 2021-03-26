@@ -1,7 +1,6 @@
 name=busybox
 ver=1.32.1
-type=tar.bz2
-src=https://busybox.net/downloads/busybox-$ver.$type
+src=https://busybox.net/downloads/busybox-$ver.tar.bz2
 
 build() {
   make defconfig

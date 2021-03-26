@@ -1,14 +1,10 @@
 ver=7.0
-type=tar.gz
-src=https://ftp.gnu.org/gnu/readline/readline-$ver.$type
-deps=(ncurses)
+src=https://ftp.gnu.org/gnu/readline/readline-$ver.tar.gz
+deps=(curses)
 files=(libreadline.a)
 
 configure() {
   CPPFLAGS="-D_GNU_SOURCE" \
   LDFLAGS="$LDFLAGS -Wl,-rpath-link=$LIB" \
-  $CONFIGURE \
-    --host=$HOST \
-    --with-sysroot=$ROOT \
-    --disable-nls
+  $CONFIGURE
 }

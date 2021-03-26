@@ -2,6 +2,6 @@ src=git://git.suckless.org/sinit
 files=(sinit)
 
 install() {
-  ln -sf $INSTALL/bin/sinit $INSTALL/init
-  chmod +x $INSTALL/init
+  ln -sf $ROOT/bin/sinit $ROOT/init
+  chmod +x $ROOT/init
 }

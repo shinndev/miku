@@ -1,7 +1,6 @@
 name=linux
 ver=5.11.2
-type=tar.xz
-src=https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$ver.$type
+src=https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$ver.tar.xz
 files=(arch/x86/boot/bzImage)
 
 build() {

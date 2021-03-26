@@ -1,2 +1,2 @@
-type=tar.gz
-src=http://hisham.hm/htop/releases/2.0.1/htop-2.0.1.tar.gz
+ver=2.0.1
+src=http://hisham.hm/htop/releases/$ver/htop-$ver.tar.gz

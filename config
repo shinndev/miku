@@ -1,3 +1,16 @@
+# General config
+
+# suckless/busybox/gnu
+USERLAND=suckless
+
+# ncurses/netbsd-curses
+CURSES=netbsd-curses
+
+# bash/mksh/oksh
+SHELL=bash
+
+# Other stuff
+
 DEBUG=yes
 
 OPT=yes

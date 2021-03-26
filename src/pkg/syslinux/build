@@ -1,5 +1,5 @@
-type=tar.xz
-src=https://mirrors.edge.kernel.org/pub/linux/utils/boot/syslinux/6.xx/syslinux-6.03.$type
+ver=6.03
+src=https://mirrors.edge.kernel.org/pub/linux/utils/boot/syslinux/6.xx/syslinux-$ver.tar.xz
 files=(bios/com32/lib/libcom32.c32)
 
 build() {

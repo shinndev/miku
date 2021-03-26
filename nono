@@ -17,25 +17,9 @@ config() {
     INSTALL=$ROOT
 
   SRC=$ROOT/src
-  PKGDIR=$ROOT/pkg/$PKG
 }
 
-pkg_open() {
-  config
-
-  [[ -e $PKGDIR ]] && \
-    SMALL=yes
-
-  [[ -d $PKGDIR ]] && \
-    SMALL=no
-
-  [[ -z $SMALL ]] && \
-    die "package $PKG does not exist"
-}
-
-pkg() {
-  pkg_open
-
+config_dev() {
   if [[ -e $BASE/config ]]; then
     . $BASE/config
   elif [[ -e $SRC/config ]]; then
@@ -47,16 +31,40 @@ pkg() {
   [[ -e /bin/$CC ]] || \
     die "missing compiler: $CC"
 
-  if [[ $SMALL = yes ]]; then
-    PKGFILE=$PKGDIR
+  HOSTCC=$CC
+}
+
+pkg_open() {
+  local pkg=$1
+
+  config
+
+  local pkgdir=$ROOT/pkg/$pkg
+
+  local small
+
+  [[ -e $pkgdir ]] && \
+    small=yes
+
+  [[ -d $pkgdir ]] && \
+    small=no
+
+  [[ -z $small ]] && \
+    die "package $pkg does not exist"
+
+  local pkgfile files patches
+
+  if [[ $small = yes ]]; then
+    pkgfile=$PKGDIR
   else
-    PKGFILE=$PKGDIR/build
-    FILES=$PKGDIR/files
-    PATCHES=$PKGDIR/patches
+    pkgfile=$PKGDIR/build
+    files=$PKGDIR/files
+    patches=$PKGDIR/patches
+
     STUFF=$PKGDIR/stuff
   fi
 
-  . $PKGFILE
+  . $pkgfile
 
   if [[ ! -z "$name" ]] && [[ $name != *" "* ]]; then
     name=${name,,}
@@ -64,39 +72,46 @@ pkg() {
     unset $name
   fi
 
-  GIT=no
+  local git=no
 
   if [[ ! -z $src ]]; then
     FILENAME=$(basename $src)
 
     if [[ $src == *"git"* ]] && [[ $FILENAME != *"."* ]]; then
-      GIT=yes
+      git=yes
     fi
   fi
 
-  if [[ $GIT = yes ]]; then
-    PKGTYPE=git
-  elif [[ ! -z $src ]]; then
-    [[ -z $type ]] && \
-      die "missing type in package $PKG"
+  local pkgtype
 
-    PKGTYPE=normal
+  if [[ $git = yes ]]; then
+    pkgtype=git
+  elif [[ ! -z $src ]]; then
+    pkgtype=normal
   elif [[ ! -z $deps ]]; then
-    PKGTYPE=group
+    pkgtype=group
+  elif [[ ! -z $options ]]; then
+    pkgtype=option
   else
-    die "empty package: $PKG"
+    die "empty package: $pkg"
   fi
 
-  if [[ $PKGTYPE = normal ]] || [[ $PKGTYPE = git ]]; then
+  if [[ $pkgtype = normal ]] || [[ $pkgtype = git ]]; then
     [[ -z $files ]] && [[ $DEBUG != yes ]] && \
       die "missing files setting"
   fi
 
   if [[ -z $ver ]]; then
-    NAME=$PKG
+    NAME=$pkg
   else
-    NAME=$PKG-$ver
+    NAME=$pkg-$ver
   fi
+}
+
+pkg_prepare() {
+  local pkg=$1
+
+  pkg_open
 
   BUILD=$SRC/build
 
@@ -109,14 +124,14 @@ pkg() {
     WORK=$BUILD/$NAME
 
     unset $FILENAME
-    unset $type
   elif [[ $PKGTYPE = group ]]; then
     unset $ver
   fi
 
-  local preffered=$(($(nproc)+1))
+  local preffered=$(nproc)
+  local max=$(($preffered+1))
 
-  if [[ -z $JOBS ]] || (($JOBS > $preffered)); then
+  if [[ -z $JOBS ]] || (($JOBS > $max)); then
     JOBS=$preffered
   fi
 
@@ -186,7 +201,7 @@ pkg() {
 pkg_extract() {
   cd $DL
 
-  if [[ $type != "zip" ]]; then
+  if [[ $FILENAME != *"zip"* ]]; then
     mkdir $WORK
   fi
 
@@ -385,7 +400,7 @@ pkg_install() {
     if pkg_exists $PKG; then
       found=no
 
-      for dep in "${deps[@]}"; do
+      for dep in ${deps[@]}; do
         if ! pkg_exists $dep; then
           found=yes
           sh $NONO -i $dep
@@ -415,8 +430,16 @@ pkg_install() {
 }
 
 pkg_exists() {
+  local pkg=$1
+
+  pkg_open $pkg
+
+  if [[ ! -z $group ]]; then
+    pkg=$group
+  fi
+
   while read line; do
-    if [[ $line == $1 ]]; then
+    if [[ $line == $pkg ]]; then
       return 0
     fi
   done < $PKGS
@@ -424,30 +447,13 @@ pkg_exists() {
 }
 
 pkg_remove() {
-  pkg
+  pkg_open
 
   if fn_exists remove; then
     if remove; then
       sed -i "/$PKG/d" $PKGS
     fi
   fi
-}
-
-pkg_info() {
-  pkg_open
-
-  if [[ $SMALL = yes ]]; then
-    PKGFILE=$PKGDIR
-  else
-    PKGFILE=$PKGDIR/build
-  fi
-
-  . $PKGFILE
-
-  [[ -z $desc ]] && \
-    die "no info found"
-
-  echo $desc
 }
 
 function cecho(){
@@ -486,8 +492,17 @@ help() {
   info "nono -e package: exists"
 }
 
-[[ -z $PKG ]] && \
-  die "provide a package name"
+array_contains() {
+    local seeking=$1; shift
+    local in=1
+    for element; do
+        if [[ $element == "$seeking" ]]; then
+            in=0
+            break
+        fi
+    done
+    return $in
+}
 
 fn_exists() {
   if type $1 2>/dev/null | grep -q 'function'; then
@@ -496,10 +511,69 @@ fn_exists() {
   return 1
 }
 
-case $1 in
--i) pkg_install ; ;;
--r) pkg_remove ; ;;
--I) pkg_info ; ;;
--e) exit $(pkg_exists $PKG) ; ;;
-*) help ; ;;
-esac
+pkgs() {
+  local pkgs
+
+  for pkg in "$@"
+  do
+    pkgs+=($pkg)
+  done
+
+  echo $pkgs
+}
+
+read_value() {
+  line=$(grep "${1}=" test)
+  value=${line#*=}
+  value=${value//(}
+  value=${value//)}
+  echo $value
+}
+
+install_pkg() {
+  local pkgs=$(pkgs)
+
+  local settings=(name ver src deps group files)
+
+  for setting in ${settings[@]}; do
+    declare local $setting="$(read_value $setting)"
+  done
+
+  for dep in ${deps[@]}
+  do
+    echo $dep
+  done
+
+  echo $src
+}
+
+remove_pkg() {
+  local pkgs=$(pkgs)
+
+  for pkg in ${pkgs[@]}
+  do
+    echo $pkg
+  done
+}
+
+pkg_info() {
+  local pkg=$1
+
+  pkg_open $pkg
+
+  echo $desc
+}
+
+run() {
+  action=$1 && shift
+
+  case $action in
+  -i) install_pkg $@ ; ;;
+  -r) remove_pkg $@ ; ;;
+  -I) pkg_info $1 ; ;;
+  -e) exit $(pkg_exists $PKG) ; ;;
+  *) help ; ;;
+  esac
+}
+
+run $@
