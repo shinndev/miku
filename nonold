@@ -6,7 +6,36 @@ PKGS=$ROOT/pkgs
 BASE=$PWD
 NONO=$BASE/nono
 
-config_dev() {
+config() {
+  [[ -z $ROOT ]] && \
+    ROOT=$(dirname $PWD)
+
+  [[ -d $ROOT/pkg ]] || \
+    die "invalid root"
+
+  [[ -z $INSTALL ]] && \
+    INSTALL=$ROOT
+
+  SRC=$ROOT/src
+  PKGDIR=$ROOT/pkg/$PKG
+}
+
+pkg_open() {
+  config
+
+  [[ -e $PKGDIR ]] && \
+    SMALL=yes
+
+  [[ -d $PKGDIR ]] && \
+    SMALL=no
+
+  [[ -z $SMALL ]] && \
+    die "package $PKG does not exist"
+}
+
+pkg() {
+  pkg_open
+
   if [[ -e $BASE/config ]]; then
     . $BASE/config
   elif [[ -e $SRC/config ]]; then
@@ -19,39 +48,17 @@ config_dev() {
     die "missing compiler: $CC"
 
   HOSTCC=$CC
-}
 
-pkg_open() {
-  local pkg=$1
-
-  config
-
-  local pkgdir=$ROOT/pkg/$pkg
-
-  local small
-
-  [[ -e $pkgdir ]] && \
-    small=yes
-
-  [[ -d $pkgdir ]] && \
-    small=no
-
-  [[ -z $small ]] && \
-    die "package $pkg does not exist"
-
-  local pkgfile files patches
-
-  if [[ $small = yes ]]; then
-    pkgfile=$PKGDIR
+  if [[ $SMALL = yes ]]; then
+    PKGFILE=$PKGDIR
   else
-    pkgfile=$PKGDIR/build
-    files=$PKGDIR/files
-    patches=$PKGDIR/patches
-
+    PKGFILE=$PKGDIR/build
+    FILES=$PKGDIR/files
+    PATCHES=$PKGDIR/patches
     STUFF=$PKGDIR/stuff
   fi
 
-  . $pkgfile
+  . $PKGFILE
 
   if [[ ! -z "$name" ]] && [[ $name != *" "* ]]; then
     name=${name,,}
@@ -59,46 +66,36 @@ pkg_open() {
     unset $name
   fi
 
-  local git=no
+  GIT=no
 
   if [[ ! -z $src ]]; then
     FILENAME=$(basename $src)
 
     if [[ $src == *"git"* ]] && [[ $FILENAME != *"."* ]]; then
-      git=yes
+      GIT=yes
     fi
   fi
 
-  local pkgtype
-
-  if [[ $git = yes ]]; then
-    pkgtype=git
+  if [[ $GIT = yes ]]; then
+    PKGTYPE=git
   elif [[ ! -z $src ]]; then
-    pkgtype=normal
+    PKGTYPE=normal
   elif [[ ! -z $deps ]]; then
-    pkgtype=group
-  elif [[ ! -z $options ]]; then
-    pkgtype=option
+    PKGTYPE=group
   else
-    die "empty package: $pkg"
+    die "empty package: $PKG"
   fi
 
-  if [[ $pkgtype = normal ]] || [[ $pkgtype = git ]]; then
+  if [[ $PKGTYPE = normal ]] || [[ $PKGTYPE = git ]]; then
     [[ -z $files ]] && [[ $DEBUG != yes ]] && \
       die "missing files setting"
   fi
 
   if [[ -z $ver ]]; then
-    NAME=$pkg
+    NAME=$PKG
   else
-    NAME=$pkg-$ver
+    NAME=$PKG-$ver
   fi
-}
-
-pkg_prepare() {
-  local pkg=$1
-
-  pkg_open
 
   BUILD=$SRC/build
 
@@ -128,7 +125,7 @@ pkg_prepare() {
 
   CONFIGURE="./configure --prefix=$PREFIX"
   MAKE="make -j$JOBS"
-  INSTALL="$MAKE DESTDIR=$ROOT install"
+  INSTALL="make DESTDIR=$ROOT install"
 
   BIN_PREFIX=$PREFIX/bin
   BIN=$ROOT$BIN_PREFIX
@@ -280,7 +277,7 @@ pkg_build() {
 
   local error=yes
 
-  for file in "${files[@]}"; do
+  for file in ${files[@]}; do
     [[ -d $file ]] || [[ -e $file ]] && error=no
   done
 
@@ -308,7 +305,7 @@ pkg_package() {
   fi
 }
 
-pkg_installs() {
+pkg_install() {
   pkg
 
   if [[ $PKGTYPE = normal ]] || [[ $PKGTYPE = git ]]; then
@@ -316,7 +313,7 @@ pkg_installs() {
       die "package $PKG is already installed"
     fi
 
-    for dep in "${deps[@]}"; do
+    for dep in ${deps[@]}; do
       if ! pkg_exists $dep; then
         sh $NONO -i $dep
       fi
@@ -327,7 +324,7 @@ pkg_installs() {
     if [[ -d $WORK ]]; then
       cd $WORK
 
-      for file in "${files[@]}"; do
+      for file in ${files[@]}; do
         [[ -d $file ]] || [[ -e $file ]] && installed=yes
       done
 
@@ -400,7 +397,7 @@ pkg_installs() {
 
       return
     else
-      for dep in "${deps[@]}"; do
+      for dep in ${deps[@]}; do
         sh $NONO -i $dep
         if ! pkg_exists $dep; then
           return
@@ -417,31 +414,39 @@ pkg_installs() {
 }
 
 pkg_exists() {
-  local pkg=$1
-
-  pkg_open $pkg
-
-  if [[ ! -z $group ]]; then
-    pkg=$group
-  fi
-
   while read line; do
-    if [[ $line == $pkg ]]; then
+    if [[ $line == $1 ]]; then
       return 0
     fi
   done < $PKGS
-
   return 1
 }
 
 pkg_remove() {
-  pkg_open
+  pkg
 
   if fn_exists remove; then
     if remove; then
       sed -i "/$PKG/d" $PKGS
     fi
   fi
+}
+
+pkg_info() {
+  pkg_open
+
+  if [[ $SMALL = yes ]]; then
+    PKGFILE=$PKGDIR
+  else
+    PKGFILE=$PKGDIR/build
+  fi
+
+  . $PKGFILE
+
+  [[ -z $desc ]] && \
+    die "no info found"
+
+  echo $desc
 }
 
 function cecho(){
@@ -468,17 +473,20 @@ info() {
   cecho "> $@" red
 }
 
-array_contains() {
-    local seeking=$1; shift
-    local in=1
-    for element; do
-        if [[ $element == "$seeking" ]]; then
-            in=0
-            break
-        fi
-    done
-    return $in
+die() {
+  info "$@"
+  exit 1
 }
+
+help() {
+  info "nono -i package: install"
+  info "nono -r package: remove"
+  info "nono -I package: info"
+  info "nono -e package: exists"
+}
+
+[[ -z $PKG ]] && \
+  die "provide a package name"
 
 fn_exists() {
   if type $1 2>/dev/null | grep -q 'function'; then
@@ -487,143 +495,10 @@ fn_exists() {
   return 1
 }
 
-die() {
-  info "$@"
-  exit 1
-}
-
-read_setting_old() {
-  line=$(grep "${1}=" $2)
-  value=${line#*=}
-  value=${value//(}
-  value=${value//)}
-  echo $value
-}
-
-read_setting() {
-  while read line; do
-    if [[ $line == *"$1"* ]]; then
-      line=${line//(}
-      line=${line//)}
-      echo $line
-    fi
-  done < $2
-}
-
-config() {
-  [[ -z $ROOT ]] && \
-    ROOT=$(dirname $PWD)
-
-  #[[ -d $ROOT/pkg ]] || \
-  #  die "invalid root"
-
-  [[ -z $INSTALL ]] && \
-    INSTALL=$ROOT
-
-  SRC=$ROOT/src
-}
-
-read_recipe() {
-  local pkg=$1
-
-  #local pkgdir=$ROOT/pkg/$pkg
-  local pkgdir=$pkg
-
-  local small
-
-  [[ -e $pkgdir ]] && \
-    small=yes
-
-  [[ -d $pkgdir ]] && \
-    small=no
-
-  [[ -z $small ]] && \
-    echo "null" && return 1
-
-  local pkgfile
-
-  if [[ $small = yes ]]; then
-    pkgfile=$pkgdir
-  else
-    pkgfile=$pkgdir/build
-  fi
-
-  echo $pkgfile
-}
-
-read_pkgs() {
-  local pkgs
-
-  for pkg in $@; do
-    pkgs+=($pkg)
-  done
-
-  echo $pkgs
-}
-
-settings=(name ver src deps group files)
-
-install_pkg() {
-  local pkgs=$(read_pkgs $@)
-
-  config
-
-  for pkg in ${pkgs[@]}; do
-    local file=$(read_recipe $pkg)
-
-    if [[ $file = null ]]; then
-      echo "package $pkg doesnt exist"
-      pkgs=("${pkgs[@]/$pkg}")
-      continue
-    fi
-
-    declare local ${pkg}_"$(read_setting deps $file)"
-
-    for i in ${test_deps[@]}; do
-      echo $i
-    done
-  done
-}
-
-pkg_install() {
-  local pkg=$1
-
-  local file=$(read_recipe $pkg)
-
-  for setting in ${settings[@]}; do
-    declare local "$(read_setting $setting $file)"
-  done
-
-  echo $src
-}
-
-remove_pkg() {
-  local pkgs=$(pkgs)
-
-  for pkg in ${pkgs[@]}
-  do
-    echo $pkg
-  done
-}
-
-pkg_info() {
-  local pkg=$1
-
-  pkg_open $pkg
-
-  echo $desc
-}
-
-run() {
-  action=$1 && shift
-
-  case $action in
-  -i) install_pkg $@ ; ;;
-  -r) remove_pkg $@ ; ;;
-  -I) pkg_info $1 ; ;;
-  -e) exit $(pkg_exists $PKG) ; ;;
-  *) help ; ;;
-  esac
-}
-
-run $@
+case $1 in
+-i) pkg_install ; ;;
+-r) pkg_remove ; ;;
+-I) pkg_info ; ;;
+-e) exit $(pkg_exists $PKG) ; ;;
+*) help ; ;;
+esac
