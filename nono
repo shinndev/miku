@@ -636,12 +636,10 @@ get_choose() {
       choose=$1
     fi
 
-    for option in ${options[@]}; do
-      if [[ $option = $choose ]]; then
-        echo $choose
-        return
-      fi
-    done
+    if array_contains $choose ${options[@]}; then
+      echo $choose
+      return
+    fi
 
     echo "null"
   fi
@@ -728,7 +726,6 @@ install_pkg() {
       continue
     fi
 
-    echo "installing: $pkg"
     pkg_install $pkg
   done
 }
@@ -771,9 +768,7 @@ pkg_install() {
     return
   fi
 
-  echo $pkg
-
-  return
+  echo "installing: $pkg"
 
   local file=$(read_recipe $pkg)
 
