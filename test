@@ -1,2 +1,2 @@
-deps=(dep1 dep2 asda asdasd)
+deps=(dep1 dep2)
 src=heloo

@@ -492,7 +492,7 @@ die() {
   exit 1
 }
 
-read_setting_old() {
+read_setting() {
   line=$(grep "${1}=" $2)
   value=${line#*=}
   value=${value//(}
@@ -500,7 +500,7 @@ read_setting_old() {
   echo $value
 }
 
-read_setting() {
+read_setting_old() {
   while read line; do
     if [[ $line == *"$1"* ]]; then
       line=${line//(}
@@ -551,22 +551,18 @@ read_recipe() {
   echo $pkgfile
 }
 
-read_pkgs() {
-  local pkgs
+settings=(name ver src deps group files)
+
+install_pkg() {
+  local pkgs=()
 
   for pkg in $@; do
     pkgs+=($pkg)
   done
 
-  echo $pkgs
-}
-
-settings=(name ver src deps group files)
-
-install_pkg() {
-  local pkgs=$(read_pkgs $@)
-
   config
+
+  local list=()
 
   for pkg in ${pkgs[@]}; do
     local file=$(read_recipe $pkg)
@@ -577,11 +573,13 @@ install_pkg() {
       continue
     fi
 
-    declare local ${pkg}_"$(read_setting deps $file)"
-
-    for i in ${test_deps[@]}; do
-      echo $i
+    for dep in $(read_setting deps $file); do
+      list+=($dep)
     done
+  done
+
+  for pkg in ${list[@]}; do
+    echo $pkg
   done
 }
 
