@@ -1,7 +1,6 @@
 #!/bin/bash
 
-BASE=$PWD
-NONO=$BASE/nono
+
 
 config_dev() {
   if [[ -e $BASE/config ]]; then
@@ -454,6 +453,11 @@ die() {
 ####### utils ##########
 
 read_setting() {
+  if [[ ! -e $2 ]]; then
+    echo ""
+    return
+  fi
+
   line=$(grep "${1}=" $2)
   value=${line#*=}
   value=${value//(}
@@ -495,6 +499,12 @@ config() {
 
   SRC=$ROOT/src
   PKGS=$ROOT/pkgs
+
+  if [[ -e $BASE/config ]]; then
+    . $BASE/config
+  elif [[ -e $SRC/config ]]; then
+    . $SRC/config
+  fi
 }
 
 # used for packages, not groups
@@ -512,7 +522,7 @@ read_recipe() {
     small=no
 
   [[ -z $small ]] && \
-    echo "null" && return 1
+    echo "" && return 1
 
   local pkgfile
 
@@ -546,81 +556,39 @@ read_recipe() {
 
 #############################################
 
-# package 'group' has alternatives
 is_group() {
-  local name=$1
+  declare local options="$(read_setting options $ROOT/pkg/$1)"
 
-  local file=$ROOT/pkg/$name
-
-  if [[ ! -e $file ]]; then
-    return 1
-  fi
-
-  declare local options="$(read_setting options $file)"
-
-  if [[ -z $options ]]; then
-    return 1
-  fi
-
-  return 0
+  [[ -z $options ]] && return 1 || return 0
 }
 
-# can a package be used for as alternative
 is_option() {
-  local pkg=$1
-
-  local file=$(read_recipe $pkg)
-
-  if [[ $file = null ]]; then
-    return 1
-  fi
-
-  return $(is_group "$(read_setting group $file)")
+  return $(is_group "$(read_setting group $(read_recipe $1))")
 }
 
 option_set() {
-  if [[ ! -z $(get_option_value $1) ]]; then
-    return 0
-  fi
-  return 1
+  [[ ! -z $(get_option_value $1) ]] && return 1 || return 0
 }
 
 get_option_value() {
   local option=$(get_option $1)
+
   echo "${!option}"
 }
 
 get_option() {
-  local name=$1
-
-  local file=$ROOT/pkg/$name
-
-  if [[ ! -e $file ]]; then
-    echo "null"
-  fi
-
-  if is_group $name; then
-    echo "$(read_setting option $file)"
-    return
-  fi
-
-  echo "null"
+  echo $(read_setting option $ROOT/pkg/$1)
 }
 
 set_option() {
   local option=$(get_option $1)
   local choose=$2
 
-  if [[ -z $option ]] || [[ -z $choose ]]; then
-     return 1
-  fi
-
   eval "$option"="$choose"
 
-  return 0
+  [[ -z $option ]] || [[ -z $choose ]] && return 1 || return 0
 }
 
-# get chosen package by using name in variable given by package
 get_choose() {
   local name=$1
 
@@ -638,10 +606,9 @@ get_choose() {
 
     if array_contains $choose ${options[@]}; then
       echo $choose
-      return
+    else
+      echo ""
     fi
-
-    echo "null"
   fi
 }
 
@@ -650,14 +617,7 @@ get_choose() {
 settings=(name ver src deps group files)
 
 pkg_exists() {
-  local pkg=$1
-
-  local file=$(read_recipe $pkg)
-
-  if [[ $file = null ]]; then
-    return 1
-  fi
-  return 0
+  [[ -z $(read_recipe $1) ]] && return 1 || return 0
 }
 
 pkg_installed() {
@@ -698,7 +658,7 @@ install_pkg() {
   for pkg in ${pkgs[@]}; do
     local file=$(read_recipe $pkg)
 
-    if [[ $file = null ]]; then
+    if [[ -z $file ]]; then
       echo "package $pkg doesnt exists"
       continue
     fi
@@ -715,7 +675,7 @@ install_pkg() {
   for pkg in ${list[@]}; do
     local file=$(read_recipe $pkg)
 
-    if [[ $file = null ]]; then
+    if [[ -z $file ]]; then
       echo "dependency $pkg doesnt exist"
       #local error=yes
       continue
@@ -735,7 +695,7 @@ ask_options() {
   return
   echo "choose options for: $pkg"
   echo "todo"
-  # set_option $pkg base-suckless
+  #set_option $pkg base-suckless
 }
 
 pkg_install() {
@@ -753,7 +713,7 @@ pkg_install() {
 
     local choose=$(get_choose $pkg)
 
-    if [[ $choose = null ]]; then
+    if [[ -z $choose ]]; then
       echo "option is set wrong: $pkg"
       return
     fi
@@ -763,7 +723,6 @@ pkg_install() {
       return
     fi
 
-    echo "installing option: $choose"
     pkg_install $choose
     return
   fi
