@@ -1,8 +1,5 @@
 #!/bin/bash
 
-PKG=$2
-PKGS=$ROOT/pkgs
-
 BASE=$PWD
 NONO=$BASE/nono
 
@@ -416,24 +413,6 @@ pkg_installs() {
   fi
 }
 
-pkg_exists() {
-  local pkg=$1
-
-  pkg_open $pkg
-
-  if [[ ! -z $group ]]; then
-    pkg=$group
-  fi
-
-  while read line; do
-    if [[ $line == $pkg ]]; then
-      return 0
-    fi
-  done < $PKGS
-
-  return 1
-}
-
 pkg_remove() {
   pkg_open
 
@@ -521,6 +500,8 @@ config() {
     INSTALL=$ROOT
 
   SRC=$ROOT/src
+  #PKGS=$ROOT/pkgs
+  PKGS=pkgs
 }
 
 read_recipe() {
@@ -553,11 +534,31 @@ read_recipe() {
 
 settings=(name ver src deps group files)
 
+pkg_exists() {
+  local pkg=$1
+
+  #pkg_open $pkg
+
+  #if [[ ! -z $group ]]; then
+  #  pkg=$group
+  #fi
+
+  while read line; do
+    if [[ $line == $pkg ]]; then
+      return 0
+    fi
+  done < $PKGS
+
+  return 1
+}
+
 install_pkg() {
   local pkgs=()
 
   for pkg in $@; do
-    pkgs+=($pkg)
+    if ! array_contains $pkg ${pkgs[@]}; then
+      pkgs+=($pkg)
+    fi
   done
 
   config
@@ -574,12 +575,22 @@ install_pkg() {
     fi
 
     for dep in $(read_setting deps $file); do
-      list+=($dep)
+      if ! array_contains $dep ${list[@]}; then
+        list+=($dep)
+      fi
     done
+
+    list+=($pkg)
   done
 
   for pkg in ${list[@]}; do
-    echo $pkg
+    local file=$(read_recipe $pkg)
+    if [[ $file = null ]]; then
+      echo "package $pkg doesnt exist"
+      list=("${list[@]/$pkg}")
+      continue
+    fi
+    pkg_install $pkg
   done
 }
 
@@ -589,10 +600,12 @@ pkg_install() {
   local file=$(read_recipe $pkg)
 
   for setting in ${settings[@]}; do
-    declare local "$(read_setting $setting $file)"
+    declare local $setting="$(read_setting $setting $file)"
   done
 
-  echo $src
+  if [[ ! -z $src ]]; then
+    echo $src
+  fi
 }
 
 remove_pkg() {

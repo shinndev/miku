@@ -1,1 +1,2 @@
-deps=(dep3 dep4)
+deps=(dep3 dep4 dep1 dep1 dep2 test)
+src=test2 src
