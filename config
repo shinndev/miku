@@ -1,7 +1,7 @@
 # General config
 
 # suckless/busybox/gnu
-USERLAND=suckless
+USERLAND=base-suckless
 
 # ncurses/netbsd-curses
 CURSES=netbsd-curses

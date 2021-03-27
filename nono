@@ -1,115 +1,12 @@
 #!/bin/bash
 
-
-
-config_dev() {
-  if [[ -e $BASE/config ]]; then
-    . $BASE/config
-  elif [[ -e $SRC/config ]]; then
-    . $SRC/config
-  fi
-
-  [[ -z $CC ]] && CC=gcc
-
-  [[ -e /bin/$CC ]] || \
-    die "missing compiler: $CC"
-
-  HOSTCC=$CC
-}
-
-pkg_open() {
-  local pkg=$1
-
-  config
-
-  local pkgdir=$ROOT/pkg/$pkg
-
-  local small
-
-  [[ -e $pkgdir ]] && \
-    small=yes
-
-  [[ -d $pkgdir ]] && \
-    small=no
-
-  [[ -z $small ]] && \
-    die "package $pkg does not exist"
-
-  local pkgfile files patches
-
-  if [[ $small = yes ]]; then
-    pkgfile=$PKGDIR
-  else
-    pkgfile=$PKGDIR/build
-    files=$PKGDIR/files
-    patches=$PKGDIR/patches
-
-    STUFF=$PKGDIR/stuff
-  fi
-
-  . $pkgfile
-
-  if [[ ! -z "$name" ]] && [[ $name != *" "* ]]; then
-    name=${name,,}
-    PKG=$name
-    unset $name
-  fi
-
-  local git=no
-
-  if [[ ! -z $src ]]; then
-    FILENAME=$(basename $src)
-
-    if [[ $src == *"git"* ]] && [[ $FILENAME != *"."* ]]; then
-      git=yes
-    fi
-  fi
-
-  local pkgtype
-
-  if [[ $git = yes ]]; then
-    pkgtype=git
-  elif [[ ! -z $src ]]; then
-    pkgtype=normal
-  elif [[ ! -z $deps ]]; then
-    pkgtype=group
-  elif [[ ! -z $options ]]; then
-    pkgtype=option
-  else
-    die "empty package: $pkg"
-  fi
-
-  if [[ $pkgtype = normal ]] || [[ $pkgtype = git ]]; then
-    [[ -z $files ]] && [[ $DEBUG != yes ]] && \
-      die "missing files setting"
-  fi
-
-  if [[ -z $ver ]]; then
-    NAME=$pkg
-  else
-    NAME=$pkg-$ver
-  fi
-}
+BASE=$PWD
+NONO=$BASE/nono
 
 pkg_prepare() {
   local pkg=$1
 
   pkg_open
-
-  BUILD=$SRC/build
-
-  if [[ $PKGTYPE = normal ]]; then
-    DL=$SRC/dl
-
-    FILE=$DL/$FILENAME
-    WORK=$BUILD/$NAME
-  elif [[ $PKGTYPE = git ]]; then
-    WORK=$BUILD/$NAME
-
-    unset $FILENAME
-  elif [[ $PKGTYPE = group ]]; then
-    unset $ver
-  fi
 
   local preffered=$(nproc)
   local max=$(($preffered+1))
@@ -412,16 +309,6 @@ pkg_installs() {
   fi
 }
 
-pkg_remove() {
-  pkg_open
-
-  if fn_exists remove; then
-    if remove; then
-      sed -i "/$PKG/d" $PKGS
-    fi
-  fi
-}
-
 ####### up is old code #####################
 
 ############## package storage ################################
@@ -497,14 +384,25 @@ config() {
   [[ -z $INSTALL ]] && \
     INSTALL=$ROOT
 
-  SRC=$ROOT/src
+  PKGDIR=$ROOT/pkg
   PKGS=$ROOT/pkgs
+
+  SRC=$ROOT/src
+  BUILD=$SRC/build
+  DL=$SRC/dl
 
   if [[ -e $BASE/config ]]; then
     . $BASE/config
   elif [[ -e $SRC/config ]]; then
     . $SRC/config
   fi
+
+  [[ -z $CC ]] && CC=gcc
+
+  [[ -e /bin/$CC ]] || \
+    die "missing compiler: $CC"
+
+  HOSTCC=$CC
 }
 
 # used for packages, not groups
@@ -522,17 +420,13 @@ read_recipe() {
     small=no
 
   [[ -z $small ]] && \
-    echo "" && return 1
-
-  local pkgfile
+    echo "" && return
 
   if [[ $small = yes ]]; then
-    pkgfile=$pkgdir
+    echo $pkgdir
   else
-    pkgfile=$pkgdir/build
+    echo $pkgdir/build
   fi
-
-  echo $pkgfile
 }
 
 ################### Group handling #################
@@ -657,7 +551,7 @@ install_pkg() {
     local file=$(read_recipe $pkg)
 
     if [[ -z $file ]]; then
-      echo "package $pkg doesnt exists"
+      echo "package $pkg doesnt exist"
       continue
     fi
 
@@ -675,7 +569,7 @@ install_pkg() {
 
     if [[ -z $file ]]; then
       echo "dependency $pkg doesnt exist"
-      #local error=yes
+      local error=yes
       continue
     fi
 
@@ -721,7 +615,7 @@ pkg_install() {
       return
     fi
 
-    pkg_install $choose
+    install_pkg $choose
 
     return
   fi
@@ -730,20 +624,122 @@ pkg_install() {
 
   local file=$(read_recipe $pkg)
 
+  local small=yes
+
+  if [[ $file == *"build"* ]]; then
+    small=no
+  fi
+
   for setting in ${settings[@]}; do
     declare local $setting=$(read_setting $setting $file)
   done
 
-  if [[ ! -z $src ]]; then
-    echo $src
+  if [[ ! -z $name ]] && [[ $name != *" "* ]]; then
+    name=${name,,}
+    pkg=$name
   fi
 
-  return # after install: TODO
+  local git=no
 
-  if is_group $group; then
-    add_entry $group
+  if [[ ! -z $src ]]; then
+    local filename=$(basename $src)
+
+    if [[ $src == *"git"* ]] && [[ $filename != *"."* ]]; then
+      git=yes
+    fi
+  fi
+
+  local pkgtype
+
+  if [[ $git = yes ]]; then
+    pkgtype=git
+  elif [[ ! -z $src ]]; then
+    pkgtype=normal
+  elif [[ ! -z $deps ]]; then
+    pkgtype=group
   else
+    echo "empty package: $pkg"
+    return 1
+  fi
+
+  if [[ $pkgtype = normal ]]; then
+    local file=$DL/$filename
+    local work=$BUILD/$name
+  elif [[ $pkgtype = git ]]; then
+    local work=$BUILD/$name
+
+    unset $filename
+  elif [[ $pkgtype = group ]]; then
+    unset $ver
+  fi
+
+  #if [[ $pkgtype = normal ]] || [[ $pkgtype = git ]]; then
+  #  [[ -z $files ]] && [[ $DEBUG != yes ]] && \
+  #    echo "missing files setting" && return 1
+  #fi
+
+  if [[ -z $ver ]]; then
+    name=$pkg
+  else
+    name=$pkg-$ver
+  fi
+
+  local pkgfile pkgdir files patches
+
+  pkgdir=$PKGDIR/$pkg
+
+  if [[ $small = no ]]; then
+    FILES=$pkgdir/files
+    PATCHES=$pkgdir/patches
+    STUFF=$pkgdir/stuff
+  fi
+
+  if $(check_installed $work $files); then
+    echo "installed missing built package: $pkg"
     add_entry $pkg
+    return
+  fi
+
+  pkg_build $pkg
+
+  if $(check_installed $work $files); then
+    echo "package $pkg is installed successfully"
+    add_entry $pkg
+  else
+    echo "package is failed to install: $pkg"
+  fi
+}
+
+check_installed() {
+  local work=$1
+  local files=$2
+
+  if [[ -d $work ]]; then
+    cd $work
+
+    for file in "${files[@]}"; do
+      [[ -d $file ]] || [[ -e $file ]] && return 0
+    done
+
+    cd $base
+  fi
+
+  return 1
+}
+
+pkg_download() {
+  local src=$1
+  local target=$2
+}
+
+pkg_build() {
+  local pkg=$1
+  local pkgfile=$(read_recipe $pkg)
+
+  [[ -e $pkgfile ]] && . $pkgfile
+
+  if fn_exists build; then
+    build
   fi
 }
 
@@ -763,6 +759,8 @@ remove_pkg() {
   for pkg in ${pkgs[@]}; do
     echo $pkg
   done
+
+  #sed -i "/$PKG/d" $PKGS
 }
 
 help() {

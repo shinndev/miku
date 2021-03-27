@@ -1,1 +1,7 @@
 group=base
+deps=(curses)
+src=test
+
+build() {
+  echo $SECURE
+}
