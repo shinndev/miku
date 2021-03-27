@@ -557,13 +557,11 @@ read_recipe() {
 #############################################
 
 is_group() {
-  declare local options="$(read_setting options $ROOT/pkg/$1)"
-
-  [[ -z $options ]] && return 1 || return 0
+  [[ -z $(read_setting options $ROOT/pkg/$1) ]] && return 1 || return 0
 }
 
 is_option() {
-  return $(is_group "$(read_setting group $(read_recipe $1))")
+  return $(is_group $(read_setting group $(read_recipe $1)))
 }
 
 option_set() {
@@ -584,7 +582,7 @@ set_option() {
   local option=$(get_option $1)
   local choose=$2
 
-  eval "$option"="$choose"
+  eval $option=$choose
 
   [[ -z $option ]] || [[ -z $choose ]] && return 1 || return 0
 }
@@ -593,7 +591,7 @@ get_choose() {
   local name=$1
 
   if is_group $name; then
-    declare local options="$(read_setting options $ROOT/pkg/$name)"
+    local options=$(read_setting options $ROOT/pkg/$name)
 
     local choose=$(get_option_value $name)
 
@@ -628,7 +626,7 @@ pkg_installed() {
   fi
 
   if is_group $pkg; then
-    declare local options="$(read_setting options $file)"
+    local options=$(read_setting options $file)
 
     for option in ${options[@]}; do
       if entry_exists $option; then
@@ -724,6 +722,7 @@ pkg_install() {
     fi
 
     pkg_install $choose
+
     return
   fi
 
@@ -732,7 +731,7 @@ pkg_install() {
   local file=$(read_recipe $pkg)
 
   for setting in ${settings[@]}; do
-    declare local $setting="$(read_setting $setting $file)"
+    declare local $setting=$(read_setting $setting $file)
   done
 
   if [[ ! -z $src ]]; then
