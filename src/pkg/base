@@ -1,1 +1,2 @@
-deps=(sbase ubase musl bash)
+option=USERLAND
+options=(base-suckless base-busybox)

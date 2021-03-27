@@ -16,6 +16,8 @@ echo "######## Miku Linux ########" & sleep 1
 export ROOT=$PWD/rootfs
 ./nono -i base
 
+exit 0
+
 if ! $(./nono -e base); then
   echo "failed to build mikulinux"
   exit 1

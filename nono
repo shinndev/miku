@@ -423,28 +423,42 @@ pkg_remove() {
   fi
 }
 
-function cecho(){
-    local exp=$1;
-    local color=$2;
-    if ! [[ $color =~ '^[0-9]$' ]] ; then
-       case $(echo $color | tr '[:upper:]' '[:lower:]') in
-        black) color=0 ;;
-        red) color=1 ;;
-        green) color=2 ;;
-        yellow) color=3 ;;
-        blue) color=4 ;;
-        magenta) color=5 ;;
-        cyan) color=6 ;;
-        white|*) color=7 ;; # white or invalid color
-       esac
-    fi
-    tput setaf $color;
-    echo $exp;
-    tput sgr0;
+####### up is old code #####################
+
+############## package storage ################################
+
+entry_exists() {
+  [[ ! -e $PKGS ]] && \
+    return 1
+
+  return $(grep -q "$1" $PKGS)
 }
 
-info() {
-  cecho "> $@" red
+add_entry() {
+  [[ ! -e $PKGS ]] && \
+    return 1
+
+  echo "$1" >> $PKGS
+  return 0
+}
+
+#
+
+####### log ##########
+
+die() {
+  echo "$@"
+  exit 1
+}
+
+####### utils ##########
+
+read_setting() {
+  line=$(grep "${1}=" $2)
+  value=${line#*=}
+  value=${value//(}
+  value=${value//)}
+  echo $value
 }
 
 array_contains() {
@@ -466,49 +480,28 @@ fn_exists() {
   return 1
 }
 
-die() {
-  info "$@"
-  exit 1
-}
+########### preparation ##############
 
-read_setting() {
-  line=$(grep "${1}=" $2)
-  value=${line#*=}
-  value=${value//(}
-  value=${value//)}
-  echo $value
-}
-
-read_setting_old() {
-  while read line; do
-    if [[ $line == *"$1"* ]]; then
-      line=${line//(}
-      line=${line//)}
-      echo $line
-    fi
-  done < $2
-}
-
+# needed when installing something
 config() {
   [[ -z $ROOT ]] && \
     ROOT=$(dirname $PWD)
 
-  #[[ -d $ROOT/pkg ]] || \
-  #  die "invalid root"
+  [[ -d $ROOT/pkg ]] || \
+    die "invalid root"
 
   [[ -z $INSTALL ]] && \
     INSTALL=$ROOT
 
   SRC=$ROOT/src
-  #PKGS=$ROOT/pkgs
-  PKGS=pkgs
+  PKGS=$ROOT/pkgs
 }
 
+# used for packages, not groups
 read_recipe() {
   local pkg=$1
 
-  #local pkgdir=$ROOT/pkg/$pkg
-  local pkgdir=$pkg
+  local pkgdir=$ROOT/pkg/$pkg
 
   local small
 
@@ -532,22 +525,161 @@ read_recipe() {
   echo $pkgfile
 }
 
+################### Group handling #################
+
+# example:
+
+# base:
+# option=USERLAND
+# options=(base-suckless base-busybox)
+
+# set_option base busybox -> USERLAND=busybox
+# get_option base -> USERLAND
+
+# get_option_value base -> busybox
+# get_choose: get_option_value with checks
+
+# notes:
+# default option is first
+# only group (main) will be count as installed
+# 'config' file can override options (USERLAND), else it will be asked, if timeout, default
+
+#############################################
+
+# package 'group' has alternatives
+is_group() {
+  local name=$1
+
+  local file=$ROOT/pkg/$name
+
+  if [[ ! -e $file ]]; then
+    return 1
+  fi
+
+  declare local options="$(read_setting options $file)"
+
+  if [[ -z $options ]]; then
+    return 1
+  fi
+
+  return 0
+}
+
+# can a package be used for as alternative
+is_option() {
+  local pkg=$1
+
+  local file=$(read_recipe $pkg)
+
+  if [[ $file = null ]]; then
+    return 1
+  fi
+
+  return $(is_group "$(read_setting group $file)")
+}
+
+option_set() {
+  if [[ ! -z $(get_option_value $1) ]]; then
+    return 0
+  fi
+  return 1
+}
+
+get_option_value() {
+  local option=$(get_option $1)
+  echo "${!option}"
+}
+
+get_option() {
+  local name=$1
+
+  local file=$ROOT/pkg/$name
+
+  if [[ ! -e $file ]]; then
+    echo "null"
+  fi
+
+  if is_group $name; then
+    echo "$(read_setting option $file)"
+    return
+  fi
+
+  echo "null"
+}
+
+set_option() {
+  local option=$(get_option $1)
+  local choose=$2
+
+  if [[ -z $option ]] || [[ -z $choose ]]; then
+     return 1
+  fi
+
+  eval "$option"="$choose"
+
+  return 0
+}
+
+# get chosen package by using name in variable given by package
+get_choose() {
+  local name=$1
+
+  if is_group $name; then
+    declare local options="$(read_setting options $ROOT/pkg/$name)"
+
+    local choose=$(get_option_value $name)
+
+    # default
+    if [[ -z $choose ]]; then
+      temp=$options
+      set -- $temp
+      choose=$1
+    fi
+
+    for option in ${options[@]}; do
+      if [[ $option = $choose ]]; then
+        echo $choose
+        return
+      fi
+    done
+
+    echo "null"
+  fi
+}
+
+############# packages ##########
+
 settings=(name ver src deps group files)
 
 pkg_exists() {
   local pkg=$1
 
-  #pkg_open $pkg
+  local file=$(read_recipe $pkg)
 
-  #if [[ ! -z $group ]]; then
-  #  pkg=$group
-  #fi
+  if [[ $file = null ]]; then
+    return 1
+  fi
+  return 0
+}
 
-  while read line; do
-    if [[ $line == $pkg ]]; then
-      return 0
-    fi
-  done < $PKGS
+pkg_installed() {
+  local pkg=$1
+
+  if ! pkg_exists $pkg; then
+    return 1
+  fi
+
+  if is_group $pkg; then
+    declare local options="$(read_setting options $file)"
+
+    for option in ${options[@]}; do
+      if entry_exists $option; then
+        return 0
+      fi
+    done
+  else
+    return $(entry_exists $pkg)
+  fi
 
   return 1
 }
@@ -569,8 +701,7 @@ install_pkg() {
     local file=$(read_recipe $pkg)
 
     if [[ $file = null ]]; then
-      echo "package $pkg doesnt exist"
-      pkgs=("${pkgs[@]/$pkg}")
+      echo "package $pkg doesnt exists"
       continue
     fi
 
@@ -585,17 +716,64 @@ install_pkg() {
 
   for pkg in ${list[@]}; do
     local file=$(read_recipe $pkg)
+
     if [[ $file = null ]]; then
-      echo "package $pkg doesnt exist"
-      list=("${list[@]/$pkg}")
+      echo "dependency $pkg doesnt exist"
+      #local error=yes
       continue
     fi
+
+    if [[ $error = yes ]]; then
+      echo "package $pkg error"
+      continue
+    fi
+
+    echo "installing: $pkg"
     pkg_install $pkg
   done
 }
 
+ask_options() {
+  local pkg=$1
+  return
+  echo "choose options for: $pkg"
+  echo "todo"
+  # set_option $pkg base-suckless
+}
+
 pkg_install() {
   local pkg=$1
+
+  if pkg_installed $pkg; then
+    echo "package $pkg is already installed"
+    return
+  fi
+
+  if is_group $pkg; then
+    if ! option_set $pkg; then
+      ask_options $pkg
+    fi
+
+    local choose=$(get_choose $pkg)
+
+    if [[ $choose = null ]]; then
+      echo "option is set wrong: $pkg"
+      return
+    fi
+
+    if ! pkg_exists $choose; then
+      echo "option $choose package doesnt exist: $pkg"
+      return
+    fi
+
+    echo "installing option: $choose"
+    pkg_install $choose
+    return
+  fi
+
+  echo $pkg
+
+  return
 
   local file=$(read_recipe $pkg)
 
@@ -606,23 +784,36 @@ pkg_install() {
   if [[ ! -z $src ]]; then
     echo $src
   fi
+
+  return # after install: TODO
+
+  if is_group $group; then
+    add_entry $group
+  else
+    add_entry $pkg
+  fi
 }
 
 remove_pkg() {
-  local pkgs=$(pkgs)
+  local pkgs=()
 
-  for pkg in ${pkgs[@]}
-  do
+  for pkg in $@; do
+    if ! array_contains $pkg ${pkgs[@]}; then
+      pkgs+=($pkg)
+    fi
+  done
+
+  config
+
+  local list=()
+
+  for pkg in ${pkgs[@]}; do
     echo $pkg
   done
 }
 
-pkg_info() {
-  local pkg=$1
-
-  pkg_open $pkg
-
-  echo $desc
+help() {
+  echo "todo"
 }
 
 run() {
@@ -631,8 +822,6 @@ run() {
   case $action in
   -i) install_pkg $@ ; ;;
   -r) remove_pkg $@ ; ;;
-  -I) pkg_info $1 ; ;;
-  -e) exit $(pkg_exists $PKG) ; ;;
   *) help ; ;;
   esac
 }
