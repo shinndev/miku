@@ -1,1 +1,2 @@
 group=base
+deps=(curses)

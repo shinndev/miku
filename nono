@@ -3,314 +3,6 @@
 BASE=$PWD
 NONO=$BASE/nono
 
-pkg_prepare() {
-  local pkg=$1
-
-  pkg_open
-
-  local preffered=$(nproc)
-  local max=$(($preffered+1))
-
-  if [[ -z $JOBS ]] || (($JOBS > $max)); then
-    JOBS=$preffered
-  fi
-
-  ARCH=x86_64
-  TARGET=$ARCH-linux-musl
-  HOST=$($CC -dumpmachine)
-
-  CONFIGURE="./configure --prefix=$PREFIX"
-  MAKE="make -j$JOBS"
-  INSTALL="$MAKE DESTDIR=$ROOT install"
-
-  BIN_PREFIX=$PREFIX/bin
-  BIN=$ROOT$BIN_PREFIX
-
-  ETC_PREFIX=$PREFIX/etc
-  ETC=$ROOT$ETC_PREFIX
-
-  INCLUDE_PREFIX=$PREFIX/include
-  INCLUDE=$ROOT$INCLUDE_PREFIX
-
-  LIB_PREFIX=$PREFIX/lib
-  LIB=$ROOT$LIB_PREFIX
-
-  SHARE_PREFIX=$PREFIX/share
-  SHARE=$ROOT$LIB_PREFIX
-
-  MAN_PREFIX=$SHARE_PREFIX/man
-  MAN=$ROOT$MAN_PREFIX
-
-  CFLAGS="-fno-unwind-tables -fno-asynchronous-unwind-tables -Wa,--noexecstack -fno-math-errno"
-  LDFLAGS="-Wl,-z,relro,-z,now -Wl,-z,text"
-
-  [[ -z $OPT ]] && OPT=yes
-  [[ -z $SECURE ]] && SECURE=yes
-
-  if [[ $OPT = yes ]]; then
-    CFLAGS="$CFLAGS -O3 -fstrength-reduce -fthread-jumps -fcse-follow-jumps -fcse-skip-blocks -frerun-cse-after-loop -fexpensive-optimizations -fforce-addr -fomit-frame-pointer"
-  else
-    CFLAGS="$CFLAGS -Os -g0 -fdata-sections -ffunction-sections"
-    LDFLAGS="$LDFLAGS -Wl,--gc-sections"
-  fi
-
-  if [[ $SECURE = yes ]]; then
-    CFLAGS="$CFLAGS -fPIE -fstack-protector"
-    LDFLAGS="$LDFLAGS -fpie"
-  fi
-
-  if [[ $STATIC = yes ]]; then
-    LDFLAGS="$LDFLAGS -static"
-  fi
-
-  if [[ -z $SILENT ]]; then
-    if [[ $DEBUG = yes ]]; then
-      SILENT=no
-    else
-      SILENT=yes
-    fi
-  fi
-
-  unset $OPT
-  unset $SECURE
-
-  export PREFIX
-  export CFLAGS LDFLAGS
-}
-
-pkg_extract() {
-  cd $DL
-
-  if [[ $FILENAME != *"zip"* ]]; then
-    mkdir $WORK
-  fi
-
-  case $FILENAME in
-  *.zip) unzip $FILENAME -d $WORK &>/dev/null ; ;;
-  *.tgz|*.gz) tar xzvf $FILENAME -C $WORK --strip-components 1 &>/dev/null ; ;;
-  *.tbz2|*.bz2) tar xjvf $FILENAME -C $WORK --strip-components 1 &>/dev/null ; ;;
-  *.xz) tar xf $FILENAME -C $WORK --strip-components 1 &>/dev/null ; ;;
-  esac
-}
-
-pkg_download() {
-  info "downloading $PKG"
-
-  if [[ $GIT = yes ]]; then
-    cd $BUILD
-
-    command="git clone $src $NAME --recurse-submodules"
-  else
-    cd $DL
-
-    command="wget --no-check-certificate $src -O $FILENAME"
-  fi
-
-  if [[ $SILENT = yes ]]; then
-    $command &>/dev/null
-  else
-    $command
-  fi
-}
-
-pkg_configure() {
-  info "configuring $PKG"
-
-  if ! fn_exists configure; then
-    if [[ -e CMakeLists.txt ]]; then
-      mkdir -p build
-      cd build
-
-      if [[ $SILENT = yes ]]; then
-        cmake .. &>/dev/null
-      else
-        cmake ..
-      fi
-    elif [[ -e configure ]]; then
-      grep -q '--prefix' configure &>/dev/null
-
-      if [ $? -eq 0 ]; then
-        $CONFIGURE
-      else
-        ./configure
-      fi
-    fi
-  else
-    if [[ $SILENT = yes ]]; then
-      configure &>/dev/null
-    else
-      configure
-    fi
-  fi
-}
-
-pkg_build() {
-  info "compiling $NAME"
-
-  if [[ -d $PATCHES ]]; then
-    for patch in $PATCHES/*; do
-      patch -p1 < $patch &>/dev/null
-    done
-  fi
-
-  if ! fn_exists build; then
-    if [[ -e Makefile ]]; then
-      if [[ $SILENT = yes ]]; then
-        $MAKE &>/dev/null
-      else
-        $MAKE
-      fi
-    else
-      die "no build() in package $PKG"
-    fi
-  else
-    if [[ $SILENT = yes ]]; then
-      build &>/dev/null
-    else
-      build
-    fi
-  fi
-
-  local error=yes
-
-  for file in "${files[@]}"; do
-    [[ -d $file ]] || [[ -e $file ]] && error=no
-  done
-
-  [[ $error = yes && $DEBUG != yes ]] && \
-    die "build error on $PKG package"
-}
-
-pkg_package() {
-  info "packaging $NAME"
-
-  if ! fn_exists install; then
-    if [[ -e Makefile ]]; then
-      grep -q 'install:' Makefile &>/dev/null
-
-      if [ $? -eq 0 ]; then
-        $INSTALL
-      fi
-    fi
-  else
-    if [[ $SILENT = yes ]]; then
-      install &>/dev/null
-    else
-      install
-    fi
-  fi
-}
-
-pkg_installs() {
-  pkg
-
-  if [[ $PKGTYPE = normal ]] || [[ $PKGTYPE = git ]]; then
-    if pkg_exists $PKG; then
-      die "package $PKG is already installed"
-    fi
-
-    for dep in "${deps[@]}"; do
-      if ! pkg_exists $dep; then
-        sh $NONO -i $dep
-      fi
-    done
-
-    local installed=no
-
-    if [[ -d $WORK ]]; then
-      cd $WORK
-
-      for file in "${files[@]}"; do
-        [[ -d $file ]] || [[ -e $file ]] && installed=yes
-      done
-
-      cd $BASE
-    fi
-
-    if [[ $installed = yes ]]; then
-      info "installed missing built package: $PKG"
-      echo $PKG >> $PKGS
-      return
-    fi
-
-    info "installing $NAME"
-  fi
-
-  if [[ $PKGTYPE = normal ]]; then
-    if [[ ! -d $WORK ]] && [[ ! -e $FILE ]]; then
-      pkg_download
-    fi
-
-    if [[ ! -e $FILE ]]; then
-      die "failed to download pkg: $PKG"
-    elif [[ ! -d $WORK ]]; then
-      pkg_extract
-    fi
-
-    if [[ ! -d $WORK ]]; then
-      die "failed to extract package: $PKG"
-    elif [[ -d $FILES ]]; then
-      yes | \cp -rf $FILES/* $WORK
-    fi
-
-    cd $WORK
-
-    pkg_configure
-    pkg_build
-    pkg_package
-  elif [[ $PKGTYPE = git ]]; then
-    if [[ ! -d $WORK ]]; then
-      pkg_download
-    fi
-
-    if [[ ! -d $WORK ]]; then
-      die "failed to clone $NAME"
-    else
-      if [[ -d $FILES ]]; then
-        yes | \cp -rf $FILES/* $WORK
-      fi
-
-      cd $WORK
-
-      pkg_build
-      pkg_configure
-      pkg_package
-    fi
-  else
-    if pkg_exists $PKG; then
-      found=no
-
-      for dep in ${deps[@]}; do
-        if ! pkg_exists $dep; then
-          found=yes
-          sh $NONO -i $dep
-        fi
-      done
-
-      if [[ $found = no ]]; then
-        info "nothing to do"
-      fi
-
-      return
-    else
-      for dep in "${deps[@]}"; do
-        sh $NONO -i $dep
-        if ! pkg_exists $dep; then
-          return
-        fi
-      done
-    fi
-  fi
-
-  echo $PKG >> $PKGS
-
-  if [[ $PKGTYPE != group ]]; then
-    info "package $PKG installed successfully"
-  fi
-}
-
-####### up is old code #####################
-
 ############## package storage ################################
 
 entry_exists() {
@@ -346,6 +38,12 @@ read_setting() {
   fi
 
   line=$(grep "${1}=" $2)
+
+  if [[ ${line::1} == "#" ]]; then
+    echo ""
+    return
+  fi
+
   value=${line#*=}
   value=${value//(}
   value=${value//)}
@@ -405,6 +103,81 @@ config() {
   HOSTCC=$CC
 }
 
+config_build() {
+  local preffered=$(nproc)
+  local max=$(($preffered+1))
+
+  if [[ -z $JOBS ]] || (($JOBS > $max)); then
+    JOBS=$preffered
+  fi
+
+  ARCH=x86_64
+  TARGET=$ARCH-linux-musl
+  HOST=$($CC -dumpmachine)
+
+  CONFIGURE="./configure --prefix=$PREFIX"
+  MAKE="make -j$JOBS"
+  INSTALL="$MAKE DESTDIR=$ROOT install"
+
+  BIN_PREFIX=$PREFIX/bin
+  BIN=$ROOT$BIN_PREFIX
+
+  ETC_PREFIX=$PREFIX/etc
+  ETC=$ROOT$ETC_PREFIX
+
+  INCLUDE_PREFIX=$PREFIX/include
+  INCLUDE=$ROOT$INCLUDE_PREFIX
+
+  LIB_PREFIX=$PREFIX/lib
+  LIB=$ROOT$LIB_PREFIX
+
+  SHARE_PREFIX=$PREFIX/share
+  SHARE=$ROOT$LIB_PREFIX
+
+  MAN_PREFIX=$SHARE_PREFIX/man
+  MAN=$ROOT$MAN_PREFIX
+
+  CFLAGS="-fno-unwind-tables -fno-asynchronous-unwind-tables -Wa,--noexecstack -fno-math-errno"
+  LDFLAGS="-Wl,-z,relro,-z,now -Wl,-z,text"
+}
+
+pkg_configure() {
+  local pkg=$1
+
+  local file=$(read_recipe $pkg)
+
+  local settings=(STATIC OPT SECURE)
+
+  for setting in ${settings[@]}; do
+    declare $setting=$(read_setting $setting $(read_recipe $file))
+  done
+
+  [[ -z $OPT ]] && OPT=yes
+  [[ -z $SECURE ]] && SECURE=yes
+
+  if [[ $OPT = yes ]]; then
+    CFLAGS="$CFLAGS -O3 -fstrength-reduce -fthread-jumps -fcse-follow-jumps -fcse-skip-blocks -frerun-cse-after-loop -fexpensive-optimizations -fforce-addr -fomit-frame-pointer"
+  else
+    CFLAGS="$CFLAGS -Os -g0 -fdata-sections -ffunction-sections"
+    LDFLAGS="$LDFLAGS -Wl,--gc-sections"
+  fi
+
+  if [[ $SECURE = yes ]]; then
+    CFLAGS="$CFLAGS -fPIE -fstack-protector"
+    LDFLAGS="$LDFLAGS -fpie"
+  fi
+
+  if [[ $STATIC = yes ]]; then
+    LDFLAGS="$LDFLAGS -static"
+  fi
+
+  unset $OPT
+  unset $SECURE
+
+  export PREFIX
+  export CFLAGS LDFLAGS
+}
+
 # used for packages, not groups
 read_recipe() {
   local pkg=$1
@@ -459,7 +232,7 @@ is_option() {
 }
 
 option_set() {
-  [[ ! -z $(get_option_value $1) ]] && return 1 || return 0
+  [[ -z $(get_option_value $1) ]] && return 1 || return 0
 }
 
 get_option_value() {
@@ -476,9 +249,11 @@ set_option() {
   local option=$(get_option $1)
   local choose=$2
 
+  [[ -z $option ]] || [[ -z $choose ]] && return 1
+
   eval $option=$choose
 
-  [[ -z $option ]] || [[ -z $choose ]] && return 1 || return 0
+  return 0
 }
 
 get_choose() {
@@ -486,6 +261,11 @@ get_choose() {
 
   if is_group $name; then
     local options=$(read_setting options $ROOT/pkg/$name)
+
+    if [[ -z $options ]]; then
+      echo ""
+      return
+    fi
 
     local choose=$(get_option_value $name)
 
@@ -520,7 +300,7 @@ pkg_installed() {
   fi
 
   if is_group $pkg; then
-    local options=$(read_setting options $file)
+    local options=$(read_setting options $ROOT/pkg/$pkg)
 
     for option in ${options[@]}; do
       if entry_exists $option; then
@@ -555,11 +335,39 @@ install_pkg() {
       continue
     fi
 
-    for dep in $(read_setting deps $file); do
-      if ! array_contains $dep ${list[@]}; then
-        list+=($dep)
+    local hasdeps=no
+
+    if [[ ! -z $(read_setting deps $file) ]]; then
+      hasdeps=yes
+
+      for dep in $(read_setting deps $file); do
+        if ! array_contains $dep ${list[@]}; then
+          list+=($dep)
+        fi
+      done
+    fi
+
+    if [[ -z $(read_setting src $file) ]]; then
+      if [[ ! -z $(read_setting options $file) ]] && [[ $hasdeps = yes ]]; then
+        echo "group package: $pkg"
+
+        for dep in $(read_setting deps $file); do
+          if ! pkg_exists $dep; then
+            echo "dependency $dep of group doesnt exist: $pkg"
+          fi
+
+          if ! pkg_install $dep; then
+            echo "dep of group $pkg error: $dep"
+            break
+          fi
+        done
+
+        echo "group installed successfully: $pkg"
+        add_entry $pkg
+
+        continue
       fi
-    done
+    fi
 
     list+=($pkg)
   done
@@ -578,7 +386,10 @@ install_pkg() {
       continue
     fi
 
-    pkg_install $pkg
+    if pkg_install $pkg; then
+      add_entry $pkg
+      echo "package $pkg installed successfully"
+    fi
   done
 }
 
@@ -595,11 +406,13 @@ pkg_install() {
 
   if pkg_installed $pkg; then
     echo "package $pkg is already installed"
-    return
+    return 1
   fi
 
+  local file=$(read_recipe $pkg)
+
   if is_group $pkg; then
-    if ! option_set $pkg; then
+    if ! option_set $pkg && [[ ! -z $(read_setting option $file) ]]; then
       ask_options $pkg
     fi
 
@@ -615,14 +428,14 @@ pkg_install() {
       return
     fi
 
+    echo $choose
+    return
     install_pkg $choose
 
     return
   fi
 
   echo "installing: $pkg"
-
-  local file=$(read_recipe $pkg)
 
   local small=yes
 
@@ -662,14 +475,21 @@ pkg_install() {
     return 1
   fi
 
+  if [[ -z $ver ]]; then
+    name=$pkg
+  else
+    name=$pkg-$ver
+  fi
+
+  local work=$BUILD/$name
+
   if [[ $pkgtype = normal ]]; then
     local file=$DL/$filename
-    local work=$BUILD/$name
   elif [[ $pkgtype = git ]]; then
-    local work=$BUILD/$name
-
+    unset $work
     unset $filename
   elif [[ $pkgtype = group ]]; then
+    unset $work
     unset $ver
   fi
 
@@ -678,35 +498,151 @@ pkg_install() {
   #    echo "missing files setting" && return 1
   #fi
 
-  if [[ -z $ver ]]; then
-    name=$pkg
-  else
-    name=$pkg-$ver
-  fi
-
   local pkgfile pkgdir files patches
 
   pkgdir=$PKGDIR/$pkg
 
   if [[ $small = no ]]; then
-    FILES=$pkgdir/files
-    PATCHES=$pkgdir/patches
     STUFF=$pkgdir/stuff
+  fi
+
+  if [[ ! -d $work ]]; then
+    if [[ $git = yes ]]; then
+      cd $BUILD
+
+      command="git clone $src $name --recurse-submodules"
+    else
+      cd $DL
+
+      command="wget --no-check-certificate $src -O $target"
+    fi
+
+    if [[ $SILENT = yes ]]; then
+      $command &>/dev/null
+    else
+      $command
+    fi
+  fi
+
+  if [[ ! -d $work ]]; then
+    if [[ $pkgtype = normal ]]; then
+      cd $DL
+
+      if [[ $filename != *"zip"* ]]; then
+        mkdir $work
+      fi
+
+      case $filename in
+      *.zip) unzip $filename -d $work &>/dev/null ; ;;
+      *.tgz|*.gz) tar xzvf $filename -C $work --strip-components 1 &>/dev/null ; ;;
+      *.tbz2|*.bz2) tar xjvf $filename -C $work --strip-components 1 &>/dev/null ; ;;
+      *.xz) tar xf $filename -C $work --strip-components 1 &>/dev/null ; ;;
+      esac
+    else
+      echo "failed to clone git repo $pkg"
+      return 1
+    fi
+  fi
+
+  if [[ ! -d $work ]]; then
+    echo "failed to extract package $pkg"
+    return 1
   fi
 
   if $(check_installed $work $files); then
     echo "installed missing built package: $pkg"
     add_entry $pkg
-    return
+    return 0
   fi
 
-  pkg_build $pkg
+  if [[ -d $pkgdir/files ]]; then
+    yes | \cp -rf $pkgdir/files/* $work
+  fi
+
+  cd $work
+
+  if [[ -d $pkgdir/patches ]]; then
+    for patch in $pkgdir/patches/*; do
+      patch -p1 < $patch &>/dev/null
+    done
+  fi
+
+  [[ -e $file ]] && . $file
+
+  info "configuring $PKG"
+
+  if ! fn_exists configure; then
+    if [[ -e CMakeLists.txt ]]; then
+      mkdir -p build
+      cd build
+
+      if [[ $SILENT = yes ]]; then
+        cmake .. &>/dev/null
+      else
+        cmake ..
+      fi
+    elif [[ -e configure ]]; then
+      grep -q '--prefix' configure &>/dev/null
+
+      if [ $? -eq 0 ]; then
+        $CONFIGURE
+      else
+        ./configure
+      fi
+    fi
+  else
+    if [[ $SILENT = yes ]]; then
+      configure &>/dev/null
+    else
+      configure
+    fi
+  fi
+
+  info "compiling $NAME"
+
+  if ! fn_exists build; then
+    if [[ -e Makefile ]]; then
+      if [[ $SILENT = yes ]]; then
+        $MAKE &>/dev/null
+      else
+        $MAKE
+      fi
+    else
+      die "no build() in package $PKG"
+    fi
+  else
+    if [[ $SILENT = yes ]]; then
+      build &>/dev/null
+    else
+      build
+    fi
+  fi
+
+  info "packaging $NAME"
+
+  if ! fn_exists install; then
+    if [[ -e Makefile ]]; then
+      grep -q 'install:' Makefile &>/dev/null
+
+      if [ $? -eq 0 ]; then
+        $INSTALL
+      fi
+    fi
+  else
+    if [[ $SILENT = yes ]]; then
+      install &>/dev/null
+    else
+      install
+    fi
+  fi
 
   if $(check_installed $work $files); then
     echo "package $pkg is installed successfully"
     add_entry $pkg
+    return 0
   else
     echo "package is failed to install: $pkg"
+    return 1
   fi
 }
 
@@ -725,22 +661,6 @@ check_installed() {
   fi
 
   return 1
-}
-
-pkg_download() {
-  local src=$1
-  local target=$2
-}
-
-pkg_build() {
-  local pkg=$1
-  local pkgfile=$(read_recipe $pkg)
-
-  [[ -e $pkgfile ]] && . $pkgfile
-
-  if fn_exists build; then
-    build
-  fi
 }
 
 remove_pkg() {
