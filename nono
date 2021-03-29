@@ -335,60 +335,37 @@ install_pkg() {
       continue
     fi
 
-    local hasdeps=no
-
-    if [[ ! -z $(read_setting deps $file) ]]; then
-      hasdeps=yes
-
-      for dep in $(read_setting deps $file); do
-        if ! array_contains $dep ${list[@]}; then
-          list+=($dep)
-        fi
-      done
-    fi
-
-    if [[ -z $(read_setting src $file) ]]; then
-      if [[ ! -z $(read_setting options $file) ]] && [[ $hasdeps = yes ]]; then
-        echo "group package: $pkg"
-
-        for dep in $(read_setting deps $file); do
-          if ! pkg_exists $dep; then
-            echo "dependency $dep of group doesnt exist: $pkg"
-          fi
-
-          if ! pkg_install $dep; then
-            echo "dep of group $pkg error: $dep"
-            break
-          fi
-        done
-
-        echo "group installed successfully: $pkg"
-        add_entry $pkg
-
-        continue
+    if is_group $pkg; then
+      if ! option_set $pkg && [[ ! -z $(read_setting option $pkgfile) ]]; then
+        ask_options $pkg
       fi
+
+      local choose=$(get_choose $pkg)
+
+      if [[ -z $choose ]]; then
+        echo "option is set wrong: $pkg"
+        return 1
+      fi
+
+      if ! pkg_exists $choose; then
+        echo "option $choose package doesnt exist: $pkg"
+        return 1
+      fi
+
+      list+=($choose)
+
+      continue
     fi
 
     list+=($pkg)
   done
 
   for pkg in ${list[@]}; do
-    local file=$(read_recipe $pkg)
-
-    if [[ -z $file ]]; then
-      echo "dependency $pkg doesnt exist"
-      local error=yes
-      continue
-    fi
-
-    if [[ $error = yes ]]; then
-      echo "package $pkg error"
-      continue
-    fi
-
     if pkg_install $pkg; then
-      add_entry $pkg
       echo "package $pkg installed successfully"
+      add_entry $pkg
+    else
+      echo "package $pkg error"
     fi
   done
 }
@@ -409,42 +386,18 @@ pkg_install() {
     return 1
   fi
 
-  local file=$(read_recipe $pkg)
-
-  if is_group $pkg; then
-    if ! option_set $pkg && [[ ! -z $(read_setting option $file) ]]; then
-      ask_options $pkg
-    fi
-
-    local choose=$(get_choose $pkg)
-
-    if [[ -z $choose ]]; then
-      echo "option is set wrong: $pkg"
-      return
-    fi
-
-    if ! pkg_exists $choose; then
-      echo "option $choose package doesnt exist: $pkg"
-      return
-    fi
-
-    echo $choose
-    return
-    install_pkg $choose
-
-    return
-  fi
+  local pkgfile=$(read_recipe $pkg)
 
   echo "installing: $pkg"
 
   local small=yes
 
-  if [[ $file == *"build"* ]]; then
+  if [[ $pkgfile == *"build"* ]]; then
     small=no
   fi
 
   for setting in ${settings[@]}; do
-    declare local $setting=$(read_setting $setting $file)
+    declare local $setting=$(read_setting $setting $pkgfile)
   done
 
   if [[ ! -z $name ]] && [[ $name != *" "* ]]; then
@@ -475,6 +428,28 @@ pkg_install() {
     return 1
   fi
 
+  if [[ $pkgtype = group ]]; then
+    local error=no
+
+    for dep in ${deps[@]}; do
+      if ! pkg_exists $dep; then
+        echo "dependency $dep of group doesnt exist: $pkg"
+        continue
+      fi
+
+      if ! pkg_install $dep; then
+        echo "dep of group $pkg error: $dep"
+        error=yes
+      fi
+    done
+
+    if [[ $error = no ]]; then
+      add_entry $pkg
+    fi
+
+    [[ $error = yes ]] && return 1 || return 0
+  fi
+
   if [[ -z $ver ]]; then
     name=$pkg
   else
@@ -498,7 +473,7 @@ pkg_install() {
   #    echo "missing files setting" && return 1
   #fi
 
-  local pkgfile pkgdir files patches
+  local pkgfile pkgdir
 
   pkgdir=$PKGDIR/$pkg
 
@@ -551,7 +526,6 @@ pkg_install() {
 
   if $(check_installed $work $files); then
     echo "installed missing built package: $pkg"
-    add_entry $pkg
     return 0
   fi
 
@@ -567,9 +541,9 @@ pkg_install() {
     done
   fi
 
-  [[ -e $file ]] && . $file
+  [[ -e $pkgfile ]] && . $pkgfile
 
-  info "configuring $PKG"
+  echo "configuring $PKG"
 
   if ! fn_exists configure; then
     if [[ -e CMakeLists.txt ]]; then
@@ -598,7 +572,7 @@ pkg_install() {
     fi
   fi
 
-  info "compiling $NAME"
+  echo "compiling $NAME"
 
   if ! fn_exists build; then
     if [[ -e Makefile ]]; then
@@ -618,7 +592,7 @@ pkg_install() {
     fi
   fi
 
-  info "packaging $NAME"
+  echo "packaging $NAME"
 
   if ! fn_exists install; then
     if [[ -e Makefile ]]; then
@@ -636,14 +610,7 @@ pkg_install() {
     fi
   fi
 
-  if $(check_installed $work $files); then
-    echo "package $pkg is installed successfully"
-    add_entry $pkg
-    return 0
-  else
-    echo "package is failed to install: $pkg"
-    return 1
-  fi
+  return $(check_installed $work $files)
 }
 
 check_installed() {
@@ -657,7 +624,7 @@ check_installed() {
       [[ -d $file ]] || [[ -e $file ]] && return 0
     done
 
-    cd $base
+    cd $BASE
   fi
 
   return 1
