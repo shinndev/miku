@@ -10,7 +10,7 @@ mkdir rootfs
 cd rootfs
 
 mkdir -p bin dev etc home lib mnt proc opt root share srv src sys tmp var
-mkdir -p src/build src/dl src/work
+mkdir -p src/build src/dl
 
 touch pkgs
 

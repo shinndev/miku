@@ -44,10 +44,7 @@ read_setting() {
     return
   fi
 
-  value=${line#*=}
-  value=${value//(}
-  value=${value//)}
-  echo $value
+  echo ${line#*=}
 }
 
 array_contains() {
@@ -66,6 +63,7 @@ fn_exists() {
   if type $1 2>/dev/null | grep -q 'function'; then
     return 0
   fi
+
   return 1
 }
 
@@ -101,6 +99,8 @@ config() {
     die "missing compiler: $CC"
 
   HOSTCC=$CC
+
+  export PREFIX
 }
 
 config_build() {
@@ -141,7 +141,7 @@ config_build() {
   LDFLAGS="-Wl,-z,relro,-z,now -Wl,-z,text"
 }
 
-pkg_configure() {
+config_pkg() {
   local pkg=$1
 
   local file=$(read_recipe $pkg)
@@ -149,7 +149,17 @@ pkg_configure() {
   local settings=(STATIC OPT SECURE)
 
   for setting in ${settings[@]}; do
-    declare $setting=$(read_setting $setting $(read_recipe $file))
+    unset $setting
+  done
+
+  for setting in ${settings[@]}; do
+    local value=$(read_setting $setting $file)
+
+    if [[ -z $value ]]; then
+      continue
+    fi
+
+    eval local $setting=$value
   done
 
   [[ -z $OPT ]] && OPT=yes
@@ -171,10 +181,7 @@ pkg_configure() {
     LDFLAGS="$LDFLAGS -static"
   fi
 
-  unset $OPT
-  unset $SECURE
-
-  export PREFIX
+  unset OPT SECURE
   export CFLAGS LDFLAGS
 }
 
@@ -224,7 +231,7 @@ read_recipe() {
 #############################################
 
 is_group() {
-  [[ -z $(read_setting options $ROOT/pkg/$1) ]] && return 1 || return 0
+  [[ -z $(read_setting options $(read_recipe $1)) ]] && return 1 || return 0
 }
 
 is_option() {
@@ -260,7 +267,7 @@ get_choose() {
   local name=$1
 
   if is_group $name; then
-    local options=$(read_setting options $ROOT/pkg/$name)
+    . $ROOT/pkg/$name
 
     if [[ -z $options ]]; then
       echo ""
@@ -286,8 +293,6 @@ get_choose() {
 
 ############# packages ##########
 
-settings=(name ver src deps group files)
-
 pkg_exists() {
   [[ -z $(read_recipe $1) ]] && return 1 || return 0
 }
@@ -300,10 +305,11 @@ pkg_installed() {
   fi
 
   if is_group $pkg; then
-    local options=$(read_setting options $ROOT/pkg/$pkg)
+    . $ROOT/pkg/$pkg
 
     for option in ${options[@]}; do
       if entry_exists $option; then
+        echo $option
         return 0
       fi
     done
@@ -335,39 +341,20 @@ install_pkg() {
       continue
     fi
 
-    if is_group $pkg; then
-      if ! option_set $pkg && [[ ! -z $(read_setting option $pkgfile) ]]; then
-        ask_options $pkg
-      fi
-
-      local choose=$(get_choose $pkg)
-
-      if [[ -z $choose ]]; then
-        echo "option is set wrong: $pkg"
-        return 1
-      fi
-
-      if ! pkg_exists $choose; then
-        echo "option $choose package doesnt exist: $pkg"
-        return 1
-      fi
-
-      list+=($choose)
-
-      continue
-    fi
-
     list+=($pkg)
   done
 
+  config_build
+
+  local error=no
+
   for pkg in ${list[@]}; do
-    if pkg_install $pkg; then
-      echo "package $pkg installed successfully"
-      add_entry $pkg
-    else
-      echo "package $pkg error"
+    if ! pkg_install $pkg; then
+      error=yes
     fi
   done
+
+  [[ $error = yes ]] && return 1 || return 0
 }
 
 ask_options() {
@@ -381,29 +368,68 @@ ask_options() {
 pkg_install() {
   local pkg=$1
 
-  if pkg_installed $pkg; then
-    echo "package $pkg is already installed"
+  if is_group $pkg; then
+    local name=$(pkg_installed $pkg)
+
+    if [[ ! -z $name ]]; then
+      echo "group $pkg is installed as $name"
+      return 0
+    fi
+
+    if ! option_set $pkg && [[ ! -z $(read_setting option $file) ]]; then
+      ask_options $pkg
+    fi
+
+    local choose=$(get_choose $pkg)
+
+    if [[ -z $choose ]]; then
+      echo "option is set wrong: $pkg"
+      return 1
+    fi
+
+    if ! pkg_exists $choose; then
+      echo "option $choose package doesnt exist: $pkg"
+      return 1
+    fi
+
+    if pkg_install $choose; then
+      add_entry $choose
+      return 0
+    fi
+
     return 1
   fi
 
-  local pkgfile=$(read_recipe $pkg)
+  if pkg_installed $pkg; then
+    echo "package $pkg is already installed"
+    return 0
+  fi
+
+  local file=$(read_recipe $pkg)
 
   echo "installing: $pkg"
 
   local small=yes
 
-  if [[ $pkgfile == *"build"* ]]; then
+  if [[ $file == *"build"* ]]; then
     small=no
   fi
 
+  local settings=(ver src deps group files)
+
   for setting in ${settings[@]}; do
-    declare local $setting=$(read_setting $setting $pkgfile)
+    unset $setting
   done
 
-  if [[ ! -z $name ]] && [[ $name != *" "* ]]; then
-    name=${name,,}
-    pkg=$name
-  fi
+  for setting in ${settings[@]}; do
+    local value=$(read_setting $setting $file)
+
+    if [[ -z $value ]]; then
+      continue
+    fi
+
+    eval local $setting=$value
+  done
 
   local git=no
 
@@ -412,6 +438,7 @@ pkg_install() {
 
     if [[ $src == *"git"* ]] && [[ $filename != *"."* ]]; then
       git=yes
+      unset $filename
     fi
   fi
 
@@ -430,25 +457,42 @@ pkg_install() {
 
   if [[ $pkgtype = group ]]; then
     local error=no
+  fi
 
+  if [[ ! -z $deps ]]; then
     for dep in ${deps[@]}; do
       if ! pkg_exists $dep; then
-        echo "dependency $dep of group doesnt exist: $pkg"
+        echo "dependency $dep of pkg doesnt exist: $pkg"
         continue
       fi
 
       if ! pkg_install $dep; then
-        echo "dep of group $pkg error: $dep"
+        echo "dep of pkg $pkg error: $dep"
         error=yes
+        break
       fi
     done
+  fi
 
-    if [[ $error = no ]]; then
-      add_entry $pkg
+  for setting in ${settings[@]}; do
+    unset $setting
+  done
+
+  for setting in ${settings[@]}; do
+    local value=$(read_setting $setting $file)
+
+    if [[ -z $value ]]; then
+      continue
     fi
 
+    eval local $setting=$value
+  done
+
+  if [[ $pkgtype = group ]]; then
     [[ $error = yes ]] && return 1 || return 0
   fi
+
+  local name
 
   if [[ -z $ver ]]; then
     name=$pkg
@@ -458,24 +502,12 @@ pkg_install() {
 
   local work=$BUILD/$name
 
-  if [[ $pkgtype = normal ]]; then
-    local file=$DL/$filename
-  elif [[ $pkgtype = git ]]; then
-    unset $work
-    unset $filename
-  elif [[ $pkgtype = group ]]; then
-    unset $work
-    unset $ver
+  if [[ $pkgtype = normal ]] || [[ $pkgtype = git ]]; then
+    [[ -z $files ]] && [[ $DEBUG != yes ]] && \
+      echo "missing files setting" && return 1
   fi
 
-  #if [[ $pkgtype = normal ]] || [[ $pkgtype = git ]]; then
-  #  [[ -z $files ]] && [[ $DEBUG != yes ]] && \
-  #    echo "missing files setting" && return 1
-  #fi
-
-  local pkgfile pkgdir
-
-  pkgdir=$PKGDIR/$pkg
+  local pkgdir=$PKGDIR/$pkg
 
   if [[ $small = no ]]; then
     STUFF=$pkgdir/stuff
@@ -489,7 +521,7 @@ pkg_install() {
     else
       cd $DL
 
-      command="wget --no-check-certificate $src -O $target"
+      command="wget --no-check-certificate $src -O $filename"
     fi
 
     if [[ $SILENT = yes ]]; then
@@ -499,12 +531,15 @@ pkg_install() {
     fi
   fi
 
-  if [[ ! -d $work ]]; then
-    if [[ $pkgtype = normal ]]; then
+  if [[ $pkgtype = normal ]]; then
+    if [[ ! -e $DL/$filename ]]; then
+      echo "failed to download package: $pkg"
+      return 1
+    else
       cd $DL
 
       if [[ $filename != *"zip"* ]]; then
-        mkdir $work
+        mkdir -p $work
       fi
 
       case $filename in
@@ -513,14 +548,16 @@ pkg_install() {
       *.tbz2|*.bz2) tar xjvf $filename -C $work --strip-components 1 &>/dev/null ; ;;
       *.xz) tar xf $filename -C $work --strip-components 1 &>/dev/null ; ;;
       esac
-    else
-      echo "failed to clone git repo $pkg"
-      return 1
     fi
   fi
 
   if [[ ! -d $work ]]; then
-    echo "failed to extract package $pkg"
+    if [[ $pkgtype = normal ]]; then
+      echo "failed to extract package $pkg"
+    else
+      echo "failed to clone git repo $pkg"
+    fi
+
     return 1
   fi
 
@@ -528,6 +565,8 @@ pkg_install() {
     echo "installed missing built package: $pkg"
     return 0
   fi
+
+  config_pkg $pkg
 
   if [[ -d $pkgdir/files ]]; then
     yes | \cp -rf $pkgdir/files/* $work
@@ -541,9 +580,9 @@ pkg_install() {
     done
   fi
 
-  [[ -e $pkgfile ]] && . $pkgfile
+  . $file
 
-  echo "configuring $PKG"
+  echo "configuring $pkg"
 
   if ! fn_exists configure; then
     if [[ -e CMakeLists.txt ]]; then
@@ -575,14 +614,24 @@ pkg_install() {
   echo "compiling $NAME"
 
   if ! fn_exists build; then
+    local makefile
+
     if [[ -e Makefile ]]; then
+      makefile=Makefile
+    fi
+
+    if [[ -e GNUmakefile ]]; then
+      makefile=GNUmakefile
+    fi
+
+    if [[ -e $makefile ]]; then
       if [[ $SILENT = yes ]]; then
         $MAKE &>/dev/null
       else
         $MAKE
       fi
     else
-      die "no build() in package $PKG"
+      die "no build() in package $pkg"
     fi
   else
     if [[ $SILENT = yes ]]; then
@@ -595,8 +644,17 @@ pkg_install() {
   echo "packaging $NAME"
 
   if ! fn_exists install; then
+    local makefile
+
     if [[ -e Makefile ]]; then
-      grep -q 'install:' Makefile &>/dev/null
+      makefile=Makefile
+    fi
+    if [[ -e GNUmakefile ]]; then
+      makefile=GNUmakefile
+    fi
+
+    if [[ -e $makefile ]]; then
+      grep -q 'install:' $makefile &>/dev/null
 
       if [ $? -eq 0 ]; then
         $INSTALL
@@ -610,7 +668,15 @@ pkg_install() {
     fi
   fi
 
-  return $(check_installed $work $files)
+  if check_installed $work $files; then
+    echo "package $pkg installed successfully"
+    add_entry $pkg
+    return 0
+  fi
+
+  if [[ $DEBUG = no ]]; then
+    return 1
+  fi
 }
 
 check_installed() {

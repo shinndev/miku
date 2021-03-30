@@ -6,9 +6,6 @@ USERLAND=base-suckless
 # ncurses/netbsd-curses
 CURSES=netbsd-curses
 
-# bash/mksh/oksh
-SHELL=bash
-
 # Other stuff
 
 DEBUG=yes
@@ -18,4 +15,4 @@ SECURE=yes
 
 CC=gcc
 JOBS=
-PREFIX=""
+PREFIX=

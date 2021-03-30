@@ -1,2 +1,2 @@
 group=base
-deps=(curses)
+deps=(sbase ubase musl bash)
