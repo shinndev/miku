@@ -1,9 +1,9 @@
 # General config
 
-# suckless/busybox/gnu
+# base-(suckless/busybox)
 USERLAND=base-suckless
 
-# ncurses/netbsd-curses
+# netbsd-curses
 CURSES=netbsd-curses
 
 # Other stuff
