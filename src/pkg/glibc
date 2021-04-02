@@ -1,0 +1,3 @@
+group=libc
+ver=2.33
+src=https://ftp.gnu.org/gnu/glibc/glibc-$ver.tar.xz

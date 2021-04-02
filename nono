@@ -66,8 +66,8 @@ config() {
   [[ -d $ROOT/pkg ]] || \
     die "invalid root"
 
-  [[ -z $INSTALL ]] && \
-    INSTALL=$ROOT
+  #[[ -z $INSTALL ]] && \
+  #  INSTALL=$ROOT
 
   PKGDIR=$ROOT/pkg
   PKGS=$ROOT/pkgs
@@ -88,8 +88,6 @@ config() {
     die "missing compiler: $CC"
 
   HOSTCC=$CC
-
-  export PREFIX
 }
 
 config_build() {
@@ -105,7 +103,7 @@ config_build() {
   HOST=$($CC -dumpmachine)
 
   CONFIGURE="./configure --prefix=$PREFIX"
-  MAKE="make -j$JOBS"
+  MAKE="make -j$JOBS PREFIX=$PREFIX prefix=$PREFIX exec_prefix=$PREFIX"
   INSTALL="$MAKE DESTDIR=$ROOT install"
 
   BIN_PREFIX=$PREFIX/bin
@@ -372,8 +370,6 @@ pkg_install() {
 
   local file=$(read_recipe $pkg)
 
-  echo "installing: $pkg"
-
   local small=yes
 
   if [[ $file == *"build"* ]]; then
@@ -457,6 +453,15 @@ pkg_install() {
     [[ $error = yes ]] && return 1 || return 0
   fi
 
+  [[ -z $files ]] && [[ $DEBUG != yes ]] && \
+    echo "missing files setting" && return 1
+
+  local pkgdir=$PKGDIR/$pkg
+
+  if [[ $small = no ]]; then
+    STUFF=$pkgdir/stuff
+  fi
+
   local name
 
   if [[ -z $ver ]]; then
@@ -465,18 +470,9 @@ pkg_install() {
     name=$pkg-$ver
   fi
 
+  echo "installing: $name"
+
   local work=$BUILD/$name
-
-  if [[ $pkgtype = normal ]] || [[ $pkgtype = git ]]; then
-    [[ -z $files ]] && [[ $DEBUG != yes ]] && \
-      echo "missing files setting" && return 1
-  fi
-
-  local pkgdir=$PKGDIR/$pkg
-
-  if [[ $small = no ]]; then
-    STUFF=$pkgdir/stuff
-  fi
 
   if [[ ! -d $work ]]; then
     if [[ $git = yes ]]; then
@@ -527,7 +523,8 @@ pkg_install() {
   fi
 
   if $(check_installed $work $files); then
-    echo "installed missing built package: $pkg"
+    echo "installed missing built package: $name"
+    add_entry $pkg
     return 0
   fi
 
@@ -554,19 +551,15 @@ pkg_install() {
       mkdir -p build
       cd build
 
+      local command="cmake -DCMAKE_INSTALL_PREFIX=$PREFIX .." 
+
       if [[ $SILENT = yes ]]; then
-        cmake .. &>/dev/null
+        $command &>/dev/null
       else
-        cmake ..
+        $command
       fi
     elif [[ -e configure ]]; then
-      grep -q '--prefix' configure &>/dev/null
-
-      if [ $? -eq 0 ]; then
-        $CONFIGURE
-      else
-        ./configure
-      fi
+      $CONFIGURE
     fi
   else
     if [[ $SILENT = yes ]]; then
@@ -576,7 +569,7 @@ pkg_install() {
     fi
   fi
 
-  echo "compiling $NAME"
+  echo "compiling $name"
 
   if ! fn_exists build; then
     local makefile
@@ -606,7 +599,7 @@ pkg_install() {
     fi
   fi
 
-  echo "packaging $NAME"
+  echo "packaging $pkg"
 
   if ! fn_exists install; then
     local makefile
@@ -634,12 +627,9 @@ pkg_install() {
   fi
 
   if check_installed $work $files; then
-    echo "package $pkg installed successfully"
+    echo "$name installed successfully"
     add_entry $pkg
-    return 0
-  fi
-
-  if [[ $DEBUG != yes ]]; then
+  elif [[ $DEBUG != yes ]]; then
     return 1
   fi
 }

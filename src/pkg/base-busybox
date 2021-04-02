@@ -1,2 +1,2 @@
 group=base
-deps=(busybox musl bash)
+deps=(busybox bash)

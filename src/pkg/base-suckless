@@ -1,2 +1,2 @@
 group=base
-deps=(sbase ubase musl bash)
+deps=(sbase ubase bash)

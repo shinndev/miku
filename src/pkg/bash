@@ -1,19 +1,11 @@
 ver=5.1
 src=https://ftp.gnu.org/gnu/bash/bash-$ver.tar.gz
-deps=(readline)
+deps=(libc curses readline)
 files=(bash)
-
-STATIC=yes
 
 configure() {
   $CONFIGURE \
+    --with-curses \
     --without-bash-malloc \
-    --disable-rpath --enable-history bash_cv_getenv_redef=no \
-    --enable-job-control bash_cv_sys_named_pipes=yes \
-    --disable-nls
-}
-
-build() {
-  $MAKE builtins/builtext.h
-  $MAKE READLINE_LIB=lib/readline/libreadline.a
+    --with-installed-readline
 }

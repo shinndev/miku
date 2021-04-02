@@ -1,10 +1,16 @@
 # General config
 
-# base-(suckless/busybox)
+# base-suckless/base-busybox
 USERLAND=base-suckless
 
 # netbsd-curses
 CURSES=netbsd-curses
+
+# musl/glibc
+LIBC=musl
+
+# awesome/xfce
+DESKTOP=awesome
 
 # Other stuff
 

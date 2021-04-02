@@ -11,7 +11,7 @@
 - no systemd
 
 ### Usage
-TODO
+edit 'config' and use ./build
 
 ### Thanks
 https://github.com/ataraxialinux/ataraxia \

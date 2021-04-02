@@ -1,10 +1,9 @@
 ver=7.0
 src=https://ftp.gnu.org/gnu/readline/readline-$ver.tar.gz
-deps=(curses)
+deps=(libc curses)
 files=(libreadline.a)
 
 configure() {
-  CPPFLAGS="-D_GNU_SOURCE" \
-  LDFLAGS="$LDFLAGS -Wl,-rpath-link=$LIB" \
+  CFLAGS="$CFLAGS -fPIC"
   $CONFIGURE
 }

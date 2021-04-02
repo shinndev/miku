@@ -1,3 +1,4 @@
+group=libc
 ver=1.2.2
 src=https://musl.libc.org/releases/musl-$ver.tar.gz
 files=(lib/libc.so)

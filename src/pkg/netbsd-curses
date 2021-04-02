@@ -1,6 +1,7 @@
 group=curses
 ver=0.3.1
 src=http://ftp.barfooze.de/pub/sabotage/tarballs/netbsd-curses-$ver.tar.xz
+deps=(libc)
 files=(libcurses/libcurses.so)
 
 configure() {
@@ -14,12 +15,4 @@ LDFLAGS=$LDFLAGGS
 PREFIX=$PREFIX
 DESTDIR=$ROOT
 EOF
-}
-
-build() {
-  $MAKE
-}
-
-install() {
-  $MAKE install
 }
