@@ -103,8 +103,8 @@ config_build() {
   HOST=$($CC -dumpmachine)
 
   CONFIGURE="./configure --prefix=$PREFIX"
-  MAKE="make -j$JOBS PREFIX=$PREFIX prefix=$PREFIX exec_prefix=$PREFIX"
-  INSTALL="$MAKE DESTDIR=$ROOT install"
+  MAKE="make -j$JOBS"
+  INSTALL="$MAKE DESTDIR=$ROOT PREFIX=$PREFIX prefix=$PREFIX exec_prefix=$PREFIX install"
 
   BIN_PREFIX=$PREFIX/bin
   BIN=$ROOT$BIN_PREFIX
