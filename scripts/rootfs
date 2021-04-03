@@ -1,11 +1,5 @@
 #!/bin/sh
 
-if [[ -d rootfs ]]; then
-  rm -rf rootfs/pkg
-  cp -rf src/* rootfs
-  exit 0
-fi
-
 mkdir rootfs
 cd rootfs
 
@@ -19,5 +13,3 @@ ln -sfn bin sbin
 
 chmod 1777 tmp
 chmod 700 root
-
-cp -rf ../src/* .

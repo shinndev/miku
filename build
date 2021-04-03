@@ -11,7 +11,15 @@ fi
 
 echo "######## Miku Linux ########" & sleep 1
 
+if [[ -d rootfs ]]; then
+  rm -rf rootfs/pkg
+  cp -rf pkg rootfs/pkg
+  exit 0
+fi
+
 ./scripts/rootfs
+
+cp -rf src/* rootfs
 
 [[ ! -z $@ ]] && exit 0
 
