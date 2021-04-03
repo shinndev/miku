@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [[ -d rootfs ]]; then
+  echo "mikulinux exists"
+  exit 1
+fi
+
 if [ ! $EUID -ne 0 ]; then
   echo "please don't run as root"
   exit 1
@@ -11,21 +16,18 @@ fi
 
 echo "######## Miku Linux ########" & sleep 1
 
-if [[ -d rootfs ]]; then
-  rm -rf rootfs/pkg
-  cp -rf pkg rootfs/pkg
-  exit 0
-fi
-
 ./scripts/rootfs
 
+cp -rf pkg rootfs/pkg
 cp -rf src/* rootfs
 
 [[ ! -z $@ ]] && exit 0
 
 ./install_pkg base
 
-exit 0
+if [[ ! -z $(grep "DEBUG=yes" config) ]]; then
+  exit 0
+fi
 
 if ! $(./nono -e base); then
   echo "failed to build mikulinux"
