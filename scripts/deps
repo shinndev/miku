@@ -15,11 +15,6 @@ for dep in ${deps[@]}; do
   fi
 done
 
-if [[ ! -e /lib/ ]]; then
-  no "gmp"
-  fail=yes
-fi
-
 if [[ $fail = yes ]]; then
   exit 1
 fi

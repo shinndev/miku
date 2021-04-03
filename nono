@@ -311,10 +311,6 @@ install_pkg() {
   [[ $error = yes ]] && return 1 || return 0
 }
 
-reload_vars() {
-  export PREFIX CFLAGS LDFLAGS
-}
-
 ask_options() {
   local pkg=$1
   return
@@ -543,7 +539,6 @@ pkg_install() {
 
   if fn_exists preconfigure; then
     preconfigure
-    reload_vars
   fi
 
   if ! fn_exists configure; then
