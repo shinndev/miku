@@ -1,9 +1,2 @@
-ver=7.0
-src=https://ftp.gnu.org/gnu/readline/readline-$ver.tar.gz
-deps=(libc curses)
-files=(libreadline.a)
-
-configure() {
-  CFLAGS="$CFLAGS -fPIC"
-  $CONFIGURE
-}
+option=READLINE
+options=(libedit gnu-readline)

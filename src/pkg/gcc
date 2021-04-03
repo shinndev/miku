@@ -6,5 +6,5 @@ configure() {
     --libdir=$LIB_PREFIX \
     --libexecdir=$LIB_PREFIX \
     --enable-threads=posix \
-    --enable-languages=c,c++,lto \
+    --enable-languages=c,c++,lto
 }

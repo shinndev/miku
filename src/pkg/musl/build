@@ -1,17 +1,13 @@
-group=libc
 ver=1.2.2
 src=https://musl.libc.org/releases/musl-$ver.tar.gz
 files=(lib/libc.so)
 
 configure() {
-  $CONFIGURE \
-    --syslibdir=$LIB_PREFIX
+  $CONFIGURE --syslibdir=$LIB_PREFIX
 }
 
-install() {
-  $INSTALL
+postinstall() {
+  #ln -sf $LIB/libc.so $BIN/ldd
 
-  ln -sf ../lib/libc.so $BIN/ldd
-
-  echo $LIB_PREFIX >> $ROOT/etc/ld-musl-$ARCH.path
+  echo $LIB_PREFIX >> $ETC/ld-musl-$ARCH.path
 }

@@ -1,0 +1,9 @@
+#!/bin/sh
+
+if [[ ! -d rootfs ]]; then
+  echo "rootfs doesn't exist"
+  exit 1
+fi
+
+export ROOT=$PWD/rootfs
+./nono -i $@

@@ -13,8 +13,9 @@ echo "######## Miku Linux ########" & sleep 1
 
 ./scripts/rootfs
 
-export ROOT=$PWD/rootfs
-./nono -i teeworlds
+[[ ! -z $@ ]] && exit 0
+
+./install_pkg base
 
 exit 0
 

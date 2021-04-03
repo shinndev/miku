@@ -11,9 +11,14 @@ no() {
 
 for dep in ${deps[@]}; do
   if [[ ! -e /bin/$dep ]]; then
-    no "$dep"
+    no $dep
   fi
 done
+
+if [[ ! -e /lib/ ]]; then
+  no "gmp"
+  fail=yes
+fi
 
 if [[ $fail = yes ]]; then
   exit 1

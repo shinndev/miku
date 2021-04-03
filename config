@@ -1,9 +1,9 @@
 # General config
 
-# base-suckless/base-busybox
+# base-suckless/toybox/busybox
 USERLAND=base-suckless
 
-# netbsd-curses
+# netbsd-curses/ncurses
 CURSES=netbsd-curses
 
 # musl/glibc
@@ -14,11 +14,10 @@ DESKTOP=awesome
 
 # Other stuff
 
-DEBUG=yes
-
 OPT=yes
 SECURE=yes
 
-CC=gcc
 JOBS=
 PREFIX=
+
+DEBUG=yes

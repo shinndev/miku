@@ -1,11 +1,11 @@
 ver=5.1
 src=https://ftp.gnu.org/gnu/bash/bash-$ver.tar.gz
-deps=(libc curses readline)
+deps=(readline)
 files=(bash)
 
 configure() {
   $CONFIGURE \
-    --with-curses \
     --without-bash-malloc \
-    --with-installed-readline
+    --disable-rpath \
+    --disable-nls
 }

@@ -1,2 +1,1 @@
-option=USERLAND
-options=(base-suckless base-busybox)
+deps=(userland bash)
