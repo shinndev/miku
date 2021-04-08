@@ -10,6 +10,9 @@
 - one script build
 - no systemd
 
+### Notes
+- only supports gcc to be built with (idk why)
+
 ### Usage
 edit 'config' and use ./build
 
