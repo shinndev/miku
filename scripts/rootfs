@@ -3,13 +3,24 @@
 mkdir rootfs
 cd rootfs
 
-mkdir -p bin dev etc home lib mnt proc opt root share srv src sys tmp var
+mkdir -p dev etc home mnt proc opt root share srv src sys tmp usr var
 mkdir -p src/build src/dl
+
+exit 0
 
 touch pkgs
 
-ln -sfn . usr
-ln -sfn bin sbin
+ln -s bin usr/bin
+ln -sf lib usr/lib
+ln -sf lib64 usr/lib
+ln -sf sbin usr/bin
+
+cd usr
+
+ln -sf bin sbin
+ln -sf lib lib64
+
+cd ..
 
 chmod 1777 tmp
 chmod 700 root

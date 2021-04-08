@@ -7,14 +7,14 @@ entry_exists() {
   [[ ! -e $PKGS ]] && \
     return 1
 
-  return $(grep -q "$1" $PKGS)
+  return $(grep -Fxq $1 $PKGS)
 }
 
 add_entry() {
   [[ ! -e $PKGS ]] && \
     return 1
 
-  echo "$1" >> $PKGS
+  echo $1 >> $PKGS
   return 0
 }
 
@@ -60,14 +60,16 @@ fn_exists() {
 }
 
 config() {
+  if [[ ! -e /bin/gcc ]]; then
+    echo "gcc not found, wtf"
+    exit 1
+  fi
+
   [[ -z $ROOT ]] && \
     ROOT=$(dirname $BASE)
 
   [[ -d $ROOT/pkg ]] || \
     die "invalid root"
-
-  [[ -z $TARGET ]] && \
-    TARGET=$ROOT
 
   PKGDIR=$ROOT/pkg
   PKGS=$ROOT/pkgs
@@ -80,6 +82,10 @@ config() {
     . $BASE/config
   elif [[ -e $SRC/config ]]; then
     . $SRC/config
+  fi
+
+  if [[ -z $PREFIX ]]; then
+    PREFIX=/usr
   fi
 
   if [[ $DEBUG != yes ]]; then
@@ -96,6 +102,16 @@ config_build() {
   fi
 
   ARCH=x86_64
+  TARGET=$ARCH-linux-musl
+  HOST=$(gcc -dumpmachine)
+
+  export CC="$HOST-gcc"
+  export CXX="$HOST-g++"
+  export AR="$HOST-gcc-ar"
+  export RANLIB="$HOST-gcc-ranlib"
+
+  BUILDFLAGS="--build=$HOST --host=$TARGET"
+  TOOLFLAGS="$BUILDFLAGS --target=$TARGET"
 
   CONFIGURE="./configure --prefix=$PREFIX"
   MAKE="make -j$JOBS"
@@ -165,6 +181,7 @@ config_pkg() {
 
   unset $OPT $SECURE
   export CFLAGS LDFLAGS
+  export CXXFLAGS=$CFLAGS
 }
 
 read_recipe() {
@@ -407,11 +424,9 @@ pkg_install() {
     return 1
   fi
 
-  if [[ $pkgtype = group ]]; then
-    local error=no
-  fi
-
   if [[ ! -z $deps ]]; then
+    local error=no
+
     for dep in ${deps[@]}; do
       if ! pkg_exists $dep; then
         echo "dependency $dep of pkg doesnt exist: $pkg"
@@ -424,6 +439,9 @@ pkg_install() {
         break
       fi
     done
+
+    [[ $error = yes ]] && return 1
+    [[ $pkgtype = group ]] && return 0
   fi
 
   for setting in ${settings[@]}; do
@@ -439,10 +457,6 @@ pkg_install() {
 
     eval local $setting=$value
   done
-
-  if [[ $pkgtype = group ]]; then
-    [[ $error = yes ]] && return 1 || return 0
-  fi
 
   [[ -z $files ]] && [[ $DEBUG != yes ]] && \
     echo "missing files setting" && return 1
@@ -564,7 +578,7 @@ pkg_install() {
     fi
   fi
 
-  echo "compiling $name"
+  echo "compiling $pkg"
 
   if ! fn_exists build; then
     local makefile
@@ -628,6 +642,7 @@ pkg_install() {
   if check_installed $work $files; then
     echo "$name installed successfully"
     add_entry $pkg
+    return 0
   fi
 
   return 1

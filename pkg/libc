@@ -1,2 +1,2 @@
 option=LIBC
-options=(musl glibc)
+options=(musl)

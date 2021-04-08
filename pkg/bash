@@ -1,6 +1,5 @@
 ver=5.1
 src=https://ftp.gnu.org/gnu/bash/bash-$ver.tar.gz
-deps=(readline)
 files=(bash)
 
 configure() {

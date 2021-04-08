@@ -1,6 +1,10 @@
 #!/bin/sh
 
-if [[ -d rootfs ]]; then
+if [[ ! -z $(grep "DEBUG=yes" config) ]]; then
+  DEBUG=yes
+fi
+
+if [[ -d rootfs ]] && [[ $DEBUG != yes ]]; then
   echo "mikulinux exists"
   exit 1
 fi
@@ -16,16 +20,20 @@ fi
 
 echo "######## Miku Linux ########" & sleep 1
 
-./scripts/rootfs
+if [[ ! -d rootfs ]]; then
+ ./scripts/rootfs
+fi
 
 cp -rf pkg rootfs/pkg
 cp -rf src/* rootfs
 
 [[ ! -z $@ ]] && exit 0
 
-./install_pkg base
+export ROOT=$PWD/rootfs
 
-if [[ ! -z $(grep "DEBUG=yes" config) ]]; then
+./scripts/install_pkg base
+
+if [[ $DEBUG = yes ]]; then
   exit 0
 fi
 

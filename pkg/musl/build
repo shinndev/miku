@@ -3,7 +3,7 @@ src=https://musl.libc.org/releases/musl-$ver.tar.gz
 files=(lib/libc.so)
 
 configure() {
-  $CONFIGURE --syslibdir=$LIB_PREFIX
+  $CONFIGURE $TOOLFLAGS --syslibdir=$LIB_PREFIX
 }
 
 postinstall() {

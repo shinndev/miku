@@ -2,7 +2,8 @@
 VERSION = 0.0
 
 # paths
-MANPREFIX = /share/man
+PREFIX = /usr
+MANPREFIX = $(PREFIX)/share/man
 
 CC = cc
 AR = ar
