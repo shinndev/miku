@@ -7,7 +7,7 @@ entry_exists() {
   [[ ! -e $PKGS ]] && \
     return 1
 
-  return $(grep -Fxq $1 $PKGS)
+  return `grep -Fxq $1 $PKGS`
 }
 
 add_entry() {
@@ -29,7 +29,7 @@ read_setting() {
     return
   fi
 
-  line=$(grep "${1}=" $2)
+  line=`grep "${1}=" $2`
 
   if [[ ${line::1} == "#" ]]; then
     echo ""
@@ -66,7 +66,7 @@ config() {
   fi
 
   [[ -z $ROOT ]] && \
-    ROOT=$(dirname $BASE)
+    ROOT=`dirname $BASE`
 
   [[ -d $ROOT/pkg ]] || \
     die "invalid root"
@@ -94,7 +94,7 @@ config() {
 }
 
 config_build() {
-  local preffered=$(nproc)
+  local preffered=`nproc`
   local max=$(($preffered+1))
 
   if [[ -z $JOBS ]] || (($JOBS > $max)); then
@@ -103,7 +103,7 @@ config_build() {
 
   ARCH=x86_64
   TARGET=$ARCH-linux-musl
-  HOST=$(gcc -dumpmachine)
+  HOST=`gcc -dumpmachine`
 
   export CC="$HOST-gcc"
   export CXX="$HOST-g++"
@@ -142,7 +142,7 @@ config_build() {
 config_pkg() {
   local pkg=$1
 
-  local file=$(read_recipe $pkg)
+  local file=`read_recipe $pkg`
 
   local settings=(STATIC OPT SECURE)
 
@@ -151,7 +151,7 @@ config_pkg() {
   done
 
   for setting in ${settings[@]}; do
-    local value=$(read_setting $setting $file)
+    local value=`read_setting $setting $file`
 
     if [[ -z $value ]]; then
       continue
@@ -208,25 +208,25 @@ read_recipe() {
 }
 
 is_group() {
-  [[ -z $(read_setting options $(read_recipe $1)) ]] && return 1 || return 0
+  [[ -z $(read_setting options `read_recipe $1`) ]] && return 1 || return 0
 }
 
 option_set() {
-  [[ -z $(get_option_value $1) ]] && return 1 || return 0
+  [[ -z `get_option_value $1` ]] && return 1 || return 0
 }
 
 get_option_value() {
-  local option=$(get_option $1)
+  local option=`get_option $1`
 
   echo ${!option}
 }
 
 get_option() {
-  echo $(read_setting option $ROOT/pkg/$1)
+  echo `read_setting option $ROOT/pkg/$1`
 }
 
 set_option() {
-  local option=$(get_option $1)
+  local option=`get_option $1`
   local choose=$2
 
   [[ -z $option ]] || [[ -z $choose ]] && return 1
@@ -240,14 +240,14 @@ get_choose() {
   local name=$1
 
   if is_group $name; then
-    eval local options=$(read_setting options $ROOT/pkg/$name)
+    eval local options=`read_setting options $ROOT/pkg/$name`
 
     if [[ -z $options ]]; then
       echo ""
       return
     fi
 
-    local choose=$(get_option_value $name)
+    local choose=`get_option_value $name`
 
     # default
     if [[ -z $choose ]]; then
@@ -265,7 +265,7 @@ get_choose() {
 }
 
 pkg_exists() {
-  [[ -z $(read_recipe $1) ]] && return 1 || return 0
+  [[ -z `read_recipe $1` ]] && return 1 || return 0
 }
 
 pkg_installed() {
@@ -276,7 +276,7 @@ pkg_installed() {
   fi
 
   if is_group $pkg; then
-    eval local options=$(read_setting options $ROOT/pkg/$pkg)
+    eval local options=`read_setting options $ROOT/pkg/$pkg`
 
     for option in ${options[@]}; do
       if entry_exists $option; then
@@ -285,7 +285,7 @@ pkg_installed() {
       fi
     done
   else
-    return $(entry_exists $pkg)
+    return `entry_exists $pkg`
   fi
 
   return 1
@@ -305,7 +305,7 @@ install_pkg() {
   local list=()
 
   for pkg in ${pkgs[@]}; do
-    local file=$(read_recipe $pkg)
+    local file=`read_recipe $pkg`
 
     if [[ -z $file ]]; then
       echo "package $pkg doesnt exist"
@@ -331,27 +331,24 @@ install_pkg() {
 ask_options() {
   local pkg=$1
   return
-  echo "choose options for: $pkg"
-  echo "todo"
-  #set_option $pkg base-suckless
 }
 
 pkg_install() {
   local pkg=$1
 
   if is_group $pkg; then
-    local name=$(pkg_installed $pkg)
+    local name=`pkg_installed $pkg`
 
     if [[ ! -z $name ]]; then
       echo "group $pkg is installed as $name"
       return 0
     fi
 
-    if ! option_set $pkg && [[ ! -z $(get_option $pkg) ]]; then
+    if ! option_set $pkg && [[ ! -z `get_option $pkg` ]]; then
       ask_options $pkg
     fi
 
-    local choose=$(get_choose $pkg)
+    local choose=`get_choose $pkg`
 
     if [[ -z $choose ]]; then
       echo "option is set wrong: $pkg"
@@ -376,7 +373,7 @@ pkg_install() {
     return 0
   fi
 
-  local file=$(read_recipe $pkg)
+  local file=`read_recipe $pkg`
 
   local small=yes
 
@@ -391,7 +388,7 @@ pkg_install() {
   done
 
   for setting in ${settings[@]}; do
-    local value=$(read_setting $setting $file)
+    local value=`read_setting $setting $file`
 
     if [[ -z $value ]]; then
       continue
@@ -403,7 +400,7 @@ pkg_install() {
   local git=no
 
   if [[ ! -z $src ]]; then
-    local filename=$(basename $src)
+    local filename=`basename $src`
 
     if [[ $src == *"git"* ]] && [[ $filename != *"."* ]]; then
       git=yes
@@ -449,7 +446,7 @@ pkg_install() {
   done
 
   for setting in ${settings[@]}; do
-    local value=$(read_setting $setting $file)
+    local value=`read_setting $setting $file`
 
     if [[ -z $value ]]; then
       continue
@@ -527,7 +524,7 @@ pkg_install() {
     return 1
   fi
 
-  if $(check_installed $work $files); then
+  if `check_installed $work $files`; then
     echo "installed missing built package: $name"
     add_entry $pkg
     return 0

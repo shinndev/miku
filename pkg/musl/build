@@ -3,11 +3,11 @@ src=https://musl.libc.org/releases/musl-$ver.tar.gz
 files=(lib/libc.so)
 
 configure() {
-  $CONFIGURE $TOOLFLAGS --syslibdir=$LIB_PREFIX
+  $CONFIGURE $TOOLFLAGS --syslibdir=$LIB_PREFIX --enable-gcc-wrapper
 }
 
 postinstall() {
-  #ln -sf $LIB/libc.so $BIN/ldd
+  ln -sf ../lib/libc.so $BIN/ldd
 
   echo $LIB_PREFIX >> $ETC/ld-musl-$ARCH.path
 }

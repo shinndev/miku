@@ -21,7 +21,7 @@ fi
 echo "######## Miku Linux ########" & sleep 1
 
 if [[ ! -d rootfs ]]; then
- ./scripts/rootfs
+  ./scripts/rootfs
 fi
 
 cp -rf pkg rootfs/pkg
