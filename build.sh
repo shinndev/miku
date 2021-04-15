@@ -17,7 +17,7 @@ title() {
 [ ! $EUID -ne 0 ] && \
     error "please don't run as root"
 
-deps=(clang wget unzip tar patch sed git cpio xz grep awk xorriso)
+deps=(gcc wget unzip tar patch sed git cpio xz grep awk xorriso)
 
 for dep in ${deps[@]}; do
     if [[ ! -e /bin/$dep ]]; then

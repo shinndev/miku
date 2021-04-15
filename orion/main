@@ -55,8 +55,8 @@ fn_exists(){
 }
 
 config(){
-	if [[ ! -e /bin/clang ]]; then
-		info "clang not found, wtf"
+	if [[ ! -e /bin/gcc ]]; then
+		info "gcc not found, wtf"
 		exit 1
 	fi
 

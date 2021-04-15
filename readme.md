@@ -6,15 +6,12 @@
 - only x86_64
 - suckless
 - easy install script
-- single bash script package manager
+- bash package manager
 - one script build
 - no systemd
 
-### Notes
-- only supports gcc to be built with (idk why)
-
 ### Usage
-edit 'config' and use ./build
+edit 'config' and use build.sh
 
 ### Thanks
 https://github.com/ataraxialinux/ataraxia \
