@@ -1,2 +1,2 @@
 option=USERLAND
-options=(base-suckless busybox base-gnu)
+options=(base-suckless base-gnu)

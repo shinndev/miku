@@ -1,7 +1,7 @@
 # General config
 
-# base-suckless/busybox/base-gnu
-#USERLAND=busybox
+# base-suckless/base-gnu
+#USERLAND=base-gnu
 
 # awesome/xfce
 DESKTOP=awesome
@@ -15,3 +15,4 @@ JOBS=
 PREFIX=
 
 DEBUG=yes
+SILENT=yes
