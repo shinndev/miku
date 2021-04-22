@@ -11,9 +11,10 @@
 - no systemd
 
 ### Usage
-see 'customize' (and 'config' if experienced) and use build.sh
+see 'config' file and use 'build.sh'
 
 ### Thanks
+https://git.2f30.org/morpheus \
 https://github.com/ataraxialinux/ataraxia \
 https://github.com/sabotage-linux/sabotage \
 https://github.com/radare/slpm
