@@ -1,10 +1,10 @@
-# General config
+# Customize
 
-# base-suckless/base-gnu
-#USERLAND=base-gnu
-
-# awesome/xfce
+# awesome or xfce
 DESKTOP=awesome
+
+# suckless-userland or gnu-userland
+USERLAND=suckless-userland
 
 # Other stuff
 

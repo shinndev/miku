@@ -21,7 +21,7 @@ deps=(gcc wget unzip tar patch sed git cpio xz grep awk xorriso)
 
 for dep in ${deps[@]}; do
     if [[ ! -e /bin/$dep ]]; then
-        echo "dependency $1 not found"
+        info "dependency $1 not found"
         fail=yes
     fi
 done
@@ -30,8 +30,7 @@ done
 
 title && sleep 0.7
 
-[[ -d rootfs ]] && \
-    error "rootfs exists"
+if [[ ! -d rootfs ]]; then
 
 mkdir rootfs
 cd rootfs
@@ -60,13 +59,15 @@ chmod 700 root
 
 cd ..
 
-cp -rf pkg rootfs/pkg
-
+cp -rf files/bin/* rootfs/bin
 cp -rf files/etc/* rootfs/etc
 cp -rf files/root/* rootfs/root
 
-cp -rf orion rootfs
+fi
 
+rm -rf rootfs/pkg
+cp -rf pkg rootfs/pkg
+cp -rf orion rootfs
 cp config rootfs/src
 
 cd rootfs/orion
@@ -75,4 +76,6 @@ cd rootfs/orion
 
 cd ../..
 
-ln -s ../../orion/main rootfs/usr/bin/orion
+if [[ ! -e rootfs/usr/bin/orion ]]; then
+  ln -s ../../orion/main rootfs/usr/bin/orion
+fi

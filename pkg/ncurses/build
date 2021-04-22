@@ -1,0 +1,19 @@
+ver=5.9
+src=http://ftp.gnu.org/pub/gnu/ncurses/ncurses-$ver.tar.gz
+
+STATIC=yes
+
+configure(){
+	$CONFIGURE $BUILDFLAGS \
+		--without-ada \
+		--without-tests \
+		--disable-termcap \
+		--disable-rpath-hack \
+		--disable-stripping \
+		--with-pkg-config-libdir=$LIB/pkgconfig \
+		--without-cxx-binding \
+		--with-terminfo-dirs="$ETC_PREFIX/terminfo:$SHARE_PREFIX/terminfo:$LIB_PREFIX/terminfo" \
+		--enable-pc-files \
+		--with-shared \
+		--enable-widec
+}

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 CWD=$(dirname `readlink -f $0`)
 . $CWD/log
@@ -424,7 +424,7 @@ pkg_install(){
 		if [[ ! -e $DL/$filename ]]; then
 			info "failed to download package: $pkg"
 			return 1
-		else
+		elif [[ ! -d $work ]]; then
 			cd $DL
 
 			if [[ $filename != *"zip"* ]]; then
@@ -510,6 +510,10 @@ pkg_install(){
 
 		if [[ -e Makefile ]]; then
 			makefile=Makefile
+		fi
+
+		if [[ -e Makefile.in ]]; then
+			makefile=Makefile.in
 		fi
 
 		if [[ -e GNUmakefile ]]; then

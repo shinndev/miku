@@ -41,6 +41,10 @@ fi
 
 ROOT=$CWD/..
 
+if [[ -z $DEST ]]; then
+    DEST=$ROOT
+fi
+
 CONFIGURE="./configure --prefix=$PREFIX"
 MAKE="make -j$JOBS"
 INSTALL="$MAKE DESTDIR=$ROOT install"

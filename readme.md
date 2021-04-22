@@ -11,7 +11,7 @@
 - no systemd
 
 ### Usage
-edit 'config' and use build.sh
+see 'customize' (and 'config' if experienced) and use build.sh
 
 ### Thanks
 https://github.com/ataraxialinux/ataraxia \
